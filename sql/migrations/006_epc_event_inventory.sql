@@ -1,0 +1,1 @@
+-- Site-event source inventory is projected with selections in 002_views.sql.

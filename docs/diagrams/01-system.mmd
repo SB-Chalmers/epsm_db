@@ -1,0 +1,10 @@
+flowchart LR
+    A["Portable verified bundle<br/>LM · heights · EPC · SCB · events"]
+    B["One national source import<br/>bounded COPY and merge batches"]
+    C[("PostgreSQL 0.0.4<br/>typed facts · compact locators<br/>EPC originals · public views")]
+    P["Database processing<br/>Uddevalla · municipality · Sweden"]
+    D["Explore · report · export"]
+    I["Explicit original inspection<br/>verify asset hash and locator"]
+    A --> B --> C --> P --> D
+    C --> I
+    A --> I

@@ -1,0 +1,7 @@
+Original location: /Users/ssanjay/GitHub/sweden_building_combined/config/uddevalla-epc-site-events.json
+Current location: /Users/ssanjay/GitHub/sweden_building_combined/data/raw/national-2026-10-13/site-events/assertions/uddevalla-epc-site-events.json
+Bundle-relative path: site-events/assertions/uddevalla-epc-site-events.json
+SHA-256: 3a27c0a8495aa2ff2f800d0eee098d716dea3fe14304471dbc83da44017f9651
+Relocation date: 2026-10-13
+
+Consumers must configure the new source root. No compatibility symlink is provided.

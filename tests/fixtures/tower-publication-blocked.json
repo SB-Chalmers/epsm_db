@@ -1,0 +1,29 @@
+{
+  "inspection_date": "2026-10-09",
+  "status": "reconciled_publication_blocked",
+  "publication_blocked": true,
+  "missing_height_records": 76998,
+  "unresolved_representation_components": 14779,
+  "epsm_preflight": "not_run",
+  "component_catalogue": "component-height-catalogue.parquet",
+  "component_catalogue_columns": [
+    "building_id",
+    "component_id",
+    "input_geometry_hash",
+    "owner_tile_id",
+    "geometry_status",
+    "height_status",
+    "representative_height_m",
+    "eave_height_m",
+    "ridge_height_m",
+    "roof_form",
+    "failure_reason",
+    "processing_status",
+    "processing_error",
+    "evidence_record_path",
+    "evidence_record_sha256",
+    "evidence_root",
+    "baseline_row_offset"
+  ],
+  "decision": "rejected_for_toy_gbg_v3"
+}

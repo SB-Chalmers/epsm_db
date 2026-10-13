@@ -1,0 +1,55 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"16px","primaryColor":"#f5f7fa","primaryTextColor":"#17232b","primaryBorderColor":"#64748b","lineColor":"#64748b","noteBkgColor":"#fff7df","noteTextColor":"#17232b","noteBorderColor":"#ac9870"}}}%%
+classDiagram
+    direction TB
+    class Building {
+        UUID building_id
+        geometry resolved_linkage_geometry
+        string register_house_number
+    }
+    class EPCCandidate {
+        string run_and_policy_version
+        number footprint_overlap_fraction
+        string accepted_or_rejected
+        string tier_and_reason
+    }
+    class EPCSubjectResult {
+        string matched_unresolved_or_no_candidate
+        string declared_reporting_scope
+        string temporal_status_and_assessment_date
+        string source_locators_and_reason_codes
+    }
+    class PropertyUnit {
+        UUID register_unit_reference
+        string raw_normalized_designations
+    }
+    class PropertyAreaPart {
+        UUID area_part_id
+        polygon geometry
+        string source_version_and_FID
+    }
+    class EPCSubject {
+        string subject_id
+        string municipality_property_house
+    }
+    class Certificate {
+        string certificate_id
+        string pre_or_post_v260
+        string verified_approval_date_or_unknown
+    }
+    class EPCObservation {
+        string documented_owner_and_child_key
+        string raw_value_and_unit
+        string typed_value_and_unit
+        string mapping_status
+    }
+    Building "1" --> "0..*" EPCCandidate : qualified spatial match
+    EPCCandidate "0..*" --> "1" PropertyUnit : parts aggregated by unit
+    PropertyUnit "1" --> "0..*" PropertyAreaPart : cadastral parts
+    EPCCandidate "0..*" --> "1" EPCSubject : exact identity or guarded address
+    EPCSubject "1" --> "0..1" EPCSubjectResult : assessed outcome
+    Certificate "1" --> "0..*" EPCSubject : certificate scope
+    Certificate "1" --> "0..*" EPCObservation : quantities stay at reporting level
+    note for EPCCandidate "Exact house first; guarded address fallback<br/>At least 50 percent overlap<br/>Exactly one eligible property<br/>Identity does not prove physical continuity"
+    note for Building "Registered property references<br/>are separate from overlap"
+    note for EPCObservation "No quantity allocation<br/>to buildings or components"
+    note for Certificate "Complete certificates linked to Uddevalla<br/>Include their outside supporting buildings<br/>Do not follow extra outside certificates"

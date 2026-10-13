@@ -1,0 +1,4 @@
+schema_version = "national-source-bundle-v1"
+source_id = "national"
+scb_snapshot_keys = ["scb_snapshot_uddevalla"]
+site_event_files = ["site-events/assertions/uddevalla-epc-site-events.json"]

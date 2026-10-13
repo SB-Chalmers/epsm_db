@@ -1,0 +1,43 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"16px","primaryColor":"#f5f7fa","primaryTextColor":"#17232b","primaryBorderColor":"#64748b","lineColor":"#64748b","noteBkgColor":"#fff7df","noteTextColor":"#17232b","noteBorderColor":"#ac9870"}}}%%
+classDiagram
+    direction LR
+    class Building {
+        UUID building_id
+    }
+    class GeometryComponent {
+        bigint component_key
+        string public_component_id
+        bytea geometry_hash
+        polygon geometry
+        string representation_status
+    }
+    class SourceGeometry {
+        string file_and_FID
+        string source_version
+        string outline_label
+        string lineage_disposition
+    }
+    class ComponentDecision {
+        string run_and_rule_version
+        string decision_and_reason
+    }
+    class HeightEvidence {
+        string input_geometry_hash
+        number representative_eave_ridge
+        string height_status
+        string roof_form
+        string measurement_reference
+    }
+    class AggregateFootprint {
+        string run_and_rule_version
+        geometry display_geometry
+        geometry linkage_geometry
+        boolean linkage_eligible
+    }
+    Building "1" --> "0..*" GeometryComponent : has geometry
+    GeometryComponent "1" --> "1..*" SourceGeometry : source lineage
+    GeometryComponent "1" --> "0..*" ComponentDecision : qualified decisions
+    GeometryComponent "1" --> "0..*" HeightEvidence : ID and hash must agree
+    Building "1" --> "0..*" AggregateFootprint : derived from selected components
+    note for GeometryComponent "Pipeline geometry ID<br/>Not permanent physical-part identity"
+    note for HeightEvidence "Roof form is not LM outline<br/>No single building height"

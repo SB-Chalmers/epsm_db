@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant U as Operator
+    participant F as Verified source bundle
+    participant L as Serial loader
+    participant D as Compact database
+    participant P as Selection processing
+    U->>L: Initialize fresh 0.0.4 national source
+    L->>F: Verify manifests, closure, hashes and row counts
+    loop File and record-position work
+        L->>F: Read at most 8192 rows / 64 MiB
+        L->>D: COPY or staged merge; facts and compact locators
+        L->>D: Commit data and checkpoint atomically
+    end
+    L->>D: Aggregate municipality assertions; finalize
+    L->>D: Reconcile counts, build secondary indexes, validate, analyze
+    D-->>U: Source completion gate
+    U->>P: Process Uddevalla from database
+    P->>D: Complete cohorts, certificates, evidence and decisions
+    P-->>U: Baseline, reports and export acceptance gate
+    Note over U,P: National publication is a separate gate. Height blockers remain explicit.

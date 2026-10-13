@@ -1,0 +1,408 @@
+schema_version = 2
+default_profile = "mac-local"
+
+[profiles.mac-local]
+description = "Sanjay's current macOS workstation"
+[profiles.mac-local.variables]
+source_root = "/Users/ssanjay/GitHub/sweden_building_combined/data/raw/national-2026-10-13"
+ubem_repo = "/Users/ssanjay/GitHub/sweden_building_combined"
+
+[profiles.tower]
+description = "CSD tower source host; staging height data is external and promotion-blocked"
+[profiles.tower.variables]
+source_root = "/Users/ssanjay/GitHub/sweden_building_combined/data/raw/national-2026-10-13"
+ubem_repo = "/Users/ssanjay/GitHub/sweden_building_combined"
+
+[profiles.linux-server]
+description = "Portable central-server defaults; override source root through UBEM_SOURCE_ROOT"
+[profiles.linux-server.variables]
+source_root = "/Users/ssanjay/GitHub/sweden_building_combined/data/raw/national-2026-10-13"
+ubem_repo = "/Users/ssanjay/GitHub/sweden_building_combined"
+
+[[sources]]
+key = "lm_building_geometry_primary"
+logical_name = "byggnad_riks.gpkg"
+dataset = "Lantmateriet Byggnad geometry"
+status = "required"
+role = "source"
+contract = "lm-building-vector-2025.02"
+path = "${source_root}/lantmateriet/buildings/byggnad_riks.gpkg"
+
+[[sources]]
+key = "lm_building_geometry_epc_reference"
+logical_name = "byggnad_riks.epc_join_reference.gpkg"
+dataset = "Lantmateriet Byggnad geometry"
+status = "required"
+role = "logical_reference"
+contract = "lm-building-vector-2025.02"
+path = "${source_root}/lantmateriet/buildings/byggnad_riks.gpkg"
+
+[[sources]]
+key = "lm_building_archive"
+logical_name = "byggnad.zip"
+dataset = "Lantmateriet Byggnad register"
+status = "required"
+role = "source"
+contract = "lm-building-xml-v1"
+path = "${source_root}/lantmateriet/buildings/byggnad.zip"
+
+[[sources]]
+key = "lm_building_metadata"
+logical_name = "byggnad_metadata.xml"
+dataset = "Lantmateriet Byggnad register"
+status = "required"
+role = "metadata"
+contract = "lm-building-xml-v1"
+path = "${source_root}/lantmateriet/buildings/byggnad_metadata.xml"
+
+[[sources]]
+key = "lm_building_xml_root"
+logical_name = "byggnad-extracted-xml"
+dataset = "Lantmateriet Byggnad register"
+status = "required"
+role = "external_directory"
+contract = "lm-building-xml-v1"
+path = "${source_root}/lantmateriet/buildings/xml"
+
+[[sources]]
+key = "lm_address_archive"
+logical_name = "belagenhetsadress.zip"
+dataset = "Lantmateriet Belagenhetsadress"
+status = "required"
+role = "source"
+contract = "lm-address-xml-v1"
+path = "${source_root}/lantmateriet/addresses/belagenhetsadress.zip"
+
+[[sources]]
+key = "lm_address_metadata"
+logical_name = "belagenhetsadress_metadata.xml"
+dataset = "Lantmateriet Belagenhetsadress"
+status = "required"
+role = "metadata"
+contract = "lm-address-xml-v1"
+path = "${source_root}/lantmateriet/addresses/belagenhetsadress_metadata.xml"
+
+[[sources]]
+key = "lm_address_xml_root"
+logical_name = "belagenhetsadress-extracted-xml"
+dataset = "Lantmateriet Belagenhetsadress"
+status = "required"
+role = "external_directory"
+contract = "lm-address-xml-v1"
+path = "${source_root}/lantmateriet/addresses/xml"
+
+[[sources]]
+key = "building_registry_locator"
+logical_name = "registry.sqlite"
+dataset = "Building register XML locator"
+status = "required"
+role = "locator"
+contract = "locator-sqlite-v1"
+path = "${source_root}/prepared/register/registry.sqlite"
+
+[[sources]]
+key = "lm_property_geometry"
+logical_name = "fastighet_riks.gpkg"
+dataset = "Lantmateriet Fastighetsindelning"
+status = "required"
+role = "source"
+contract = "lm-property-vector-2025.02"
+path = "${source_root}/lantmateriet/properties/fastighet_riks.gpkg"
+
+[[sources]]
+key = "scb_municipality_boundaries_primary"
+logical_name = "shape_svenska_260225.zip"
+dataset = "SCB municipality boundaries"
+status = "archive_only"
+role = "deprecated_reference"
+contract = "scb-boundary-v1"
+path = "${source_root}/scb/boundaries/shape_svenska_260225.zip"
+
+[[sources]]
+key = "scb_municipality_boundaries_epc_reference"
+logical_name = "shape_svenska_260225.epc_join_reference.zip"
+dataset = "SCB municipality boundaries"
+status = "archive_only"
+role = "deprecated_reference"
+contract = "scb-boundary-v1"
+path = "${source_root}/scb/boundaries/shape_svenska_260225.zip"
+
+[[sources]]
+key = "scb_population_grid_2025"
+logical_name = "befolkning_1km_2025.gpkg"
+dataset = "SCB population grid 2025"
+status = "required"
+role = "source"
+contract = "scb-population-grid-v1"
+path = "${source_root}/scb/population/befolkning_1km_2025.gpkg"
+
+[[sources]]
+key = "height_staging_catalogue"
+logical_name = "component-height-catalogue.parquet"
+dataset = "EPSM component heights"
+status = "staging_only"
+role = "catalogue"
+contract = "component-height-staging-v1"
+expected_sha256 = "42a087f8a0fd401f90d5722656dc4612c918d7e7567c0245f77214c87a96df55"
+path = "${source_root}/prepared/heights/component-stage/handoff/component-height-catalogue.parquet"
+
+[[sources]]
+key = "height_staging_reconciliation"
+logical_name = "reconciliation.json"
+dataset = "EPSM component heights"
+status = "staging_only"
+role = "reconciliation"
+contract = "component-height-staging-v1"
+path = "${source_root}/prepared/heights/component-stage/handoff/reconciliation.json"
+
+[[sources]]
+key = "height_path_mapping"
+logical_name = "height-evidence-path-mapping"
+dataset = "Transferred height evidence"
+status = "staging_only"
+role = "path_mapping"
+contract = "height-path-map-v1"
+path = "${source_root}/prepared/heights/transfer-receipts/path-mapping.json"
+
+[[sources]]
+key = "tower_component_register_root"
+logical_name = "tower-2026-10-06-register"
+dataset = "EPSM geometry component register"
+status = "staging_only"
+role = "release_directory"
+contract = "source-component-register-v1"
+path = "${source_root}/prepared/components"
+
+[[sources]]
+key = "epc_subjects"
+logical_name = "epc_subjects.parquet"
+dataset = "Boverket EPC subjects"
+status = "validation_oracle"
+role = "comparison_locator"
+contract = "epc-subject-v1"
+path = "${source_root}/boverket/epc/comparison/epc_subjects.parquet"
+
+[[sources]]
+key = "epc_raw_root"
+logical_name = "epc-raw-dual-regime"
+dataset = "Boverket EPC exports"
+status = "required"
+role = "source_directory"
+contract = "boverket-epc-dual-regime-v1"
+path = "${source_root}/boverket/epc"
+
+[[sources]]
+key = "epc_before_datamodel"
+logical_name = "fore_v260/Datamodell.docx"
+dataset = "Boverket EPC pre-v260 schema"
+status = "required"
+role = "schema_documentation"
+contract = "boverket-fore-v260-v1"
+path = "${source_root}/boverket/epc/fore_v260/Datamodell.docx"
+
+[[sources]]
+key = "epc_before_mapping"
+logical_name = "fore_v260/Mappningsfil_fore_v260.xlsx"
+dataset = "Boverket EPC pre-v260 schema"
+status = "required"
+role = "schema_documentation"
+contract = "boverket-fore-v260-v1"
+path = "${source_root}/boverket/epc/fore_v260/Mappningsfil_fore_v260.xlsx"
+
+[[sources]]
+key = "epc_before_export_1"
+logical_name = "fore_v260/data/std_uttag_fore_260_del_1.txt"
+dataset = "Boverket EPC pre-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-fore-v260-v1"
+path = "${source_root}/boverket/epc/fore_v260/data/std_uttag_fore_260_del_1.txt"
+
+[[sources]]
+key = "epc_before_export_2"
+logical_name = "fore_v260/data/std_uttag_fore_260_del_2.txt"
+dataset = "Boverket EPC pre-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-fore-v260-v1"
+path = "${source_root}/boverket/epc/fore_v260/data/std_uttag_fore_260_del_2.txt"
+
+[[sources]]
+key = "epc_after_datamodel"
+logical_name = "efter_v260/Datamodell.docx"
+dataset = "Boverket EPC post-v260 schema"
+status = "required"
+role = "schema_documentation"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/Datamodell.docx"
+
+[[sources]]
+key = "epc_after_form_specification"
+logical_name = "efter_v260/Formulär version 2.8.pdf"
+dataset = "Boverket EPC post-v260 schema"
+status = "required"
+role = "schema_documentation"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/Formul„r version 2.8.pdf"
+
+[[sources]]
+key = "epc_after_mapping"
+logical_name = "efter_v260/Mappningsfil_efter_v260.xlsx"
+dataset = "Boverket EPC post-v260 schema"
+status = "required"
+role = "schema_documentation"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/Mappningsfil_efter_v260.xlsx"
+
+[[sources]]
+key = "epc_after_exports"
+logical_name = "efter_v260/data/std_uttag_efter_260_2015-2025.txt"
+dataset = "Boverket EPC post-v260 exports"
+status = "required"
+role = "source_series"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data"
+
+[[sources]]
+key = "epc_after_export_2015"
+logical_name = "efter_v260/data/std_uttag_efter_260_2015.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2015.txt"
+
+[[sources]]
+key = "epc_after_export_2016"
+logical_name = "efter_v260/data/std_uttag_efter_260_2016.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2016.txt"
+
+[[sources]]
+key = "epc_after_export_2017"
+logical_name = "efter_v260/data/std_uttag_efter_260_2017.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2017.txt"
+
+[[sources]]
+key = "epc_after_export_2018"
+logical_name = "efter_v260/data/std_uttag_efter_260_2018.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2018.txt"
+
+[[sources]]
+key = "epc_after_export_2019"
+logical_name = "efter_v260/data/std_uttag_efter_260_2019.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2019.txt"
+
+[[sources]]
+key = "epc_after_export_2020"
+logical_name = "efter_v260/data/std_uttag_efter_260_2020.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2020.txt"
+
+[[sources]]
+key = "epc_after_export_2021"
+logical_name = "efter_v260/data/std_uttag_efter_260_2021.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2021.txt"
+
+[[sources]]
+key = "epc_after_export_2022"
+logical_name = "efter_v260/data/std_uttag_efter_260_2022.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2022.txt"
+
+[[sources]]
+key = "epc_after_export_2023"
+logical_name = "efter_v260/data/std_uttag_efter_260_2023.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2023.txt"
+
+[[sources]]
+key = "epc_after_export_2024"
+logical_name = "efter_v260/data/std_uttag_efter_260_2024.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2024.txt"
+
+[[sources]]
+key = "epc_after_export_2025"
+logical_name = "efter_v260/data/std_uttag_efter_260_2025.txt"
+dataset = "Boverket EPC post-v260 export"
+status = "required"
+role = "source"
+contract = "boverket-efter-v260-v1"
+path = "${source_root}/boverket/epc/efter_v260/data/std_uttag_efter_260_2025.txt"
+
+[[sources]]
+key = "epc_linkage_2_oracle"
+logical_name = "epc-linkage-2.0.0"
+dataset = "Derived EPC linkage"
+status = "validation_oracle"
+role = "baseline_oracle"
+contract = "epc-linkage-2.0.0"
+path = "${source_root}/boverket/epc/comparison/releases/2.0.0"
+
+[[sources]]
+key = "epc_linkage_3_oracle"
+logical_name = "epc-linkage-3.0.0"
+dataset = "Derived EPC linkage"
+status = "validation_oracle"
+role = "supplemental_oracle"
+contract = "epc-linkage-3.0.0"
+path = "${source_root}/boverket/epc/comparison/releases/3.0.0"
+
+[[sources]]
+key = "scb_snapshot_pinned"
+logical_name = "scb-context-snapshot-3cc70456"
+dataset = "SCB RegSO and PxWeb snapshot"
+status = "archive_only"
+role = "snapshot_directory"
+contract = "scb-context-snapshot-v1"
+path = "${source_root}/scb/snapshots/3cc70456ceba91447b3a143bf8375b3561129c61b6aa3c4aa1d36cff13b47410"
+
+[[sources]]
+key = "scb_snapshot_uddevalla"
+logical_name = "scb-context-uddevalla-44b929ad"
+dataset = "SCB Uddevalla RegSO 2025 and income 2024"
+status = "required"
+role = "snapshot_directory"
+contract = "scb-context-snapshot-v1"
+path = "${source_root}/scb/snapshots/44b929adf9cbb754ecb2b22253a383118bf01af92967ab7e0cd890c3e387dada"
+
+[[sources]]
+key = "sql_migrations"
+logical_name = "sql-migrations"
+dataset = "UBEM database application"
+status = "generated"
+role = "application_input"
+contract = "ubem-schema-0.0.4"
+path = "${ubem_repo}/sql/baselines/0.0.4"

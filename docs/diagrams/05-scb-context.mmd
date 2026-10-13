@@ -1,0 +1,38 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"16px","primaryColor":"#f5f7fa","primaryTextColor":"#17232b","primaryBorderColor":"#64748b","lineColor":"#64748b","noteBkgColor":"#fff7df","noteTextColor":"#17232b","noteBorderColor":"#ac9870"}}}%%
+classDiagram
+    direction TB
+    class Building {
+        UUID building_id
+        string LM_municipality_code
+    }
+    class AreaAssignment {
+        string run_and_rule_version
+        number overlap_and_rank
+        string primary_or_ambiguous
+    }
+    class StatisticalArea {
+        string source_version_type_code
+        string municipality_regso_grid
+        polygon geometry_3006
+    }
+    class AreaObservation {
+        string period_and_all_dimensions
+        string raw_value_unit_or_protected_token
+        string normalized_value_and_transform
+    }
+    class Indicator {
+        string indicator_id
+        string definition_and_unit
+    }
+    class AreaHierarchy {
+        string child_area_key
+        string parent_area_key
+        string source_or_run_reference
+    }
+    Building "1" --> "0..*" AreaAssignment : preserve all overlaps
+    AreaAssignment "0..*" --> "1" StatisticalArea : qualified area context
+    StatisticalArea "1" --> "0..*" AreaHierarchy : explicit parent references
+    StatisticalArea "1" --> "0..*" AreaObservation : describes the area
+    AreaObservation "0..*" --> "1" Indicator : statistical definition
+    note for AreaObservation "Population describes the area<br/>Not building occupants"
+    note for AreaAssignment "Area context only<br/>Never cadastral or EPC matching"

@@ -1,0 +1,40 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"16px","primaryColor":"#f5f7fa","primaryTextColor":"#17232b","primaryBorderColor":"#64748b","lineColor":"#64748b","noteBkgColor":"#fff7df","noteTextColor":"#17232b","noteBorderColor":"#ac9870"}}}%%
+classDiagram
+    direction TB
+    class Building {
+        UUID building_id
+    }
+    class RegisterRecord {
+        string source_version_and_locator
+        int construction_year
+        string house_number
+        string status_and_source_flags
+    }
+    class Purpose {
+        int source_ordinal
+        string category_and_detail
+        boolean nullable_main_flag
+    }
+    class Entrance {
+        UUID entrance_id
+        UUID raw_address_reference
+        string source_status
+    }
+    class AddressLookup {
+        string run_id
+        string resolved_missing_ambiguous
+        string reason
+    }
+    class AddressPlace {
+        UUID address_place_id
+        string source_version
+        string address_fields
+        point geometry_3006
+    }
+    Building "1" --> "0..*" RegisterRecord : original XML records
+    RegisterRecord "1" --> "0..*" Purpose : retain every occurrence
+    RegisterRecord "1" --> "0..*" Entrance : retain every entrance
+    Entrance "1" --> "0..*" AddressLookup : explicit UUID lookup
+    AddressLookup "0..*" --> "0..1" AddressPlace : nullable resolved target
+    note for Purpose "Filter any purpose<br/>Main flag shown separately"
+    note for AddressLookup "Keep raw reference<br/>when lookup fails"

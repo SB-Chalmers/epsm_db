@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sweden-ubem"
+version = "0.0.4"
+description = "PostGIS database for Swedish building evidence"
+requires-python = ">=3.11"
+dependencies = [
+  "psycopg[binary]>=3.2,<4",
+  "pyarrow>=23,<26",
+  "geopandas>=1,<2",
+  "pyogrio>=0.11,<1",
+  "pyproj>=3.5,<4",
+  "shapely>=2.1,<3",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10"]
+notebook = ["matplotlib>=3.9,<4", "nbclient>=0.10,<1", "ipykernel>=6,<8", "jupyterlab>=4,<5"]
+epsm = ["epsm_core==0.1.0.dev0", "epsm_data==0.3.0.dev1"]
+weather = ["smhi2epw"]
+
+[project.scripts]
+sweden-ubem = "sweden_ubem.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sweden_ubem = ["municipality_names.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["integration: requires local Swedish source releases", "postgis: requires UBEM_DATABASE_URL"]
+
+[tool.ruff]
+line-length = 100

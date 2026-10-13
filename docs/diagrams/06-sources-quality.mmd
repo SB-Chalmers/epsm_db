@@ -1,0 +1,28 @@
+erDiagram
+    ASSET ||--o{ SOURCE_OCCURRENCE : identifies_bytes
+    SOURCE_VERSION ||--o{ SOURCE_OCCURRENCE : pins_logical_inputs
+    SOURCE_OCCURRENCE ||--o{ RECORD_LOCATOR : locates
+    RECORD_LOCATOR ||--o| EPC_SOURCE_ROW : stores_original_once
+    RECORD_LOCATOR ||--o| HEIGHT_CATALOGUE : stores_facts_once
+    EPC_SOURCE_ROW ||--o{ EPC_SUBJECT : representative_original
+    ASSET ||--o| ASSET_VERIFICATION : measurement_check_once
+    PROCESS_RUN ||--o{ WORK_UNIT : atomic_checkpoint
+    PROCESS_RUN ||--o{ FINDING : explains
+    ASSET {
+      bigint asset_key PK
+      text sha256 UK
+      bigint byte_size
+    }
+    SOURCE_OCCURRENCE {
+      bigint occurrence_key PK
+      text logical_name
+      text bundle_path
+      bigint asset_key FK
+    }
+    RECORD_LOCATOR {
+      bigint record_key PK
+      bigint occurrence_key FK
+      text kind
+      text source_record
+      text source_member
+    }
