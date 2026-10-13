@@ -18,7 +18,8 @@ from .weather import WeatherReference
 @dataclass(frozen=True)
 class ModelPolicy:
     name: str = "ubem_v1"
-    version: str = "2"
+    version: str = "3"
+    minimum_programme_blend_share: float = 0.05
     typical_floor_height_m: float = 3.0
     minimum_full_floor_height_m: float = 2.0
     maximum_full_floor_height_m: float = 5.0
@@ -54,6 +55,11 @@ class ModelPolicy:
     )
 
     def __post_init__(self):
+        if (
+            not math.isfinite(self.minimum_programme_blend_share)
+            or not 0 <= self.minimum_programme_blend_share < 1
+        ):
+            raise ValueError("Minimum programme blend share must lie in [0,1)")
         positive = [
             self.typical_floor_height_m,
             self.minimum_full_floor_height_m,
@@ -115,6 +121,30 @@ def _active_dates(year, count, *, school=False):
     if len(weekdays) < count:
         raise ValueError("Not enough weekdays for the normal-use calendar")
     return tuple(weekdays[round(i * (len(weekdays) - 1) / (count - 1))] for i in range(count))
+
+
+def _effective_programme_shares(shares, *, primary, minimum_share, receipt):
+    """Assign sub-threshold EPC area to the largest retained operational use."""
+    retained = {name: share for name, share in shares.items() if share >= minimum_share}
+    if not retained:
+        name = max(shares, key=shares.get)
+        retained = {name: shares[name]}
+    dominant = max(retained, key=lambda name: (retained[name], name == primary))
+    omitted = {name: share for name, share in shares.items() if name not in retained}
+    retained[dominant] += math.fsum(omitted.values())
+    receipt.identities["programme_allocation"] = {
+        "reported_shares": dict(shares),
+        "modelled_shares": dict(retained),
+        "minimum_blend_share": minimum_share,
+        "folded_into": dominant if omitted else None,
+        "folded_shares": omitted,
+    }
+    if omitted:
+        receipt.assumptions.append(
+            f"EPC programme shares below {minimum_share:.0%} folded into {dominant}: "
+            + ", ".join(f"{name} {share:.0%}" for name, share in omitted.items())
+        )
+    return retained
 
 
 def _ventilation(record, policy, receipt, override):
@@ -481,6 +511,7 @@ def _operation(
         ScheduleSpec,
         UseSpec,
         load_dhw_profile,
+        load_generic_other_v1,
         load_sveby_office_v1,
         load_sveby_school_v1,
         load_sveby_spec,
@@ -512,7 +543,16 @@ def _operation(
             f"{name}: versioned Sveby equivalent programme with assumed calendar"
         )
     else:
-        raise ValueError(f"No v1 operational programme for positive share {name!r}")
+        profile = load_generic_other_v1()
+        use = profile.use_spec()
+        flow = profile.mechanical_vent_l_s_m2
+        fraction = profile.ventilation_fraction()
+        receipt.assumptions.append(
+            f"{name}: {profile.profile_id} screening fallback; actual use and schedule unresolved"
+        )
+        receipt.quality.append(
+            f"{name} operational programme uses a generic fallback; review before interpreting demand error"
+        )
     air = AirflowSpec(
         topology=ventilation,
         **infiltration,
@@ -724,6 +764,12 @@ class EPSMBuilding:
                 receipt.assumptions.append(
                     f"Programme distribution unavailable; 100% {primary} operational scenario"
                 )
+            shares = _effective_programme_shares(
+                shares,
+                primary=primary,
+                minimum_share=policy.minimum_programme_blend_share,
+                receipt=receipt,
+            )
             programmes = {
                 name: _operation(
                     name,
@@ -754,7 +800,7 @@ class EPSMBuilding:
                 else "multi_family",
             )
             blend = ProgramBlend(
-                source="ubem_v1: EPC heated-area shares; effective zones with primary-use controls and common building ventilation",
+                source="ubem_v1: EPC heated-area shares after documented sub-threshold allocation; effective zones with primary-use controls and common building ventilation",
                 components=tuple(
                     ProgramComponent(
                         name=name,
@@ -842,7 +888,7 @@ class EPSMBuilding:
                 SourceRecord(
                     field_path="use",
                     status="assumed",
-                    source="Versioned Sveby profiles with declared effective programme controls",
+                    source="Versioned operational profiles or labelled generic fallback with declared effective programme controls",
                 ),
                 SourceRecord(
                     field_path="airflow",

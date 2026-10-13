@@ -5,7 +5,13 @@ import pytest
 from test_record_api import make_record
 
 from sweden_ubem.enums import BuildingType
-from sweden_ubem.epsm import EPSMBuilding, ModelAssemblyError, ModelPolicy
+from sweden_ubem.epsm import (
+    EPSMBuilding,
+    ModelAssemblyError,
+    ModelPolicy,
+    _effective_programme_shares,
+)
+from sweden_ubem.records import Receipt
 from sweden_ubem.weather import WeatherReference
 
 
@@ -59,6 +65,70 @@ def test_mixed_fractional_programmes_compile_on_common_building_controls(weather
     assert [p["area_fraction"] for p in parts] == [0.8, 0.2]
     assert receipt.ready_for_simulation
     assert building.spec.load_reference_area_m2 == 90
+
+
+def test_sub_five_percent_shares_fold_into_largest_programme():
+    receipt = Receipt("test")
+    shares = {"residential": 0.97, "restaurant": 0.01, "daytime_service": 0.02}
+    effective = _effective_programme_shares(
+        shares, primary="residential", minimum_share=0.05, receipt=receipt
+    )
+    assert effective == {"residential": 1.0}
+    assert receipt.identities["programme_allocation"]["reported_shares"] == shares
+    assert receipt.identities["programme_allocation"]["folded_shares"] == {
+        "restaurant": 0.01,
+        "daytime_service": 0.02,
+    }
+    assert _effective_programme_shares(
+        {"residential": 0.95, "other": 0.05},
+        primary="residential",
+        minimum_share=0.05,
+        receipt=Receipt("test"),
+    ) == {"residential": 0.95, "other": 0.05}
+
+
+def test_unknown_programmes_use_core_generic_fallback_when_share_is_substantial(weather):
+    record = make_record(
+        type=BuildingType.OFFICE,
+        programmes={"EgenAtempKontor": 65, "EgenAtempOvrig": 35},
+    )
+    building, receipt = EPSMBuilding.from_record(record, weather=weather)
+    allocation = receipt.identities["programme_allocation"]
+    components = receipt.identities["programme_blend"]["components"]
+    assert allocation["modelled_shares"] == {"office": 0.65, "other": 0.35}
+    assert components[1]["source"] == "epsm.generic_other.v1"
+    assert building.spec.use.occupancy_category == "non_residential"
+    assert receipt.ready_for_simulation
+    assert any("generic fallback" in item for item in receipt.quality)
+
+
+def test_minor_unknown_programmes_do_not_request_a_fallback(weather):
+    record = make_record(
+        type=BuildingType.RESIDENTIAL_MULTIFAMILY,
+        programmes={
+            "EgenAtempBostad": 97,
+            "EgenAtempRestaurang": 1,
+            "EgenAtempVardDag": 2,
+        },
+    )
+    _, receipt = EPSMBuilding.from_record(record, weather=weather)
+    assert receipt.ready_for_simulation
+    assert [p["name"] for p in receipt.identities["programme_blend"]["components"]] == [
+        "residential"
+    ]
+    assert not any("generic fallback" in item for item in receipt.quality)
+
+
+def test_substantial_missing_programme_compiles_in_residential_mix(weather):
+    record = make_record(
+        type=BuildingType.RESIDENTIAL_MULTIFAMILY,
+        programmes={"EgenAtempBostad": 90, "EgenAtempRestaurang": 10},
+    )
+    _, receipt = EPSMBuilding.from_record(record, weather=weather)
+    components = receipt.identities["programme_blend"]["components"]
+    assert receipt.ready_for_simulation
+    assert components[1]["name"] == "restaurant"
+    assert components[1]["source"] == "epsm.generic_other.v1"
 
 
 @pytest.mark.parametrize(

@@ -222,9 +222,14 @@ Unclear roofs become flat with an assumption. Credible reported storeys use a
 3 m typical floors and unchanged body height. This differs from the exploratory
 2.5–3.5 m check and is not an accuracy gate. Basements support zero/one full heated
 floorplate, assumed 2.5 m depth and 18 C setpoint. Unknown presence defaults to none
-with an assumption. Multiple basements, unresolved geometry and unsupported positive
-programmes produce failure receipts. Core's terrain/partial-basement/occupied-roof
-limitations remain explicit approximations.
+with an assumption. Multiple basements and unresolved geometry produce failure
+receipts. EPC programme shares below 5% are assigned to the largest remaining use
+before blending; exactly 5% remains in the blend. Unsupported uses at or above 5%
+receive Core's `epsm.generic_other.v1` daytime screening profile. Receipts retain
+reported and modelled shares, folded fractions, and fallback quality flags. The
+generic profile is an explicit assumption and should be replaced when actual use
+is known. Core's terrain/partial-basement/occupied-roof limitations remain
+explicit approximations.
 
 `ModelPolicy` configures these assumptions, WWR (currently 0.2 for all four types),
 ventilation defaults, FTX recovery, attic exchange, delivery and climate zone.
