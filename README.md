@@ -271,6 +271,16 @@ EPC normalization/measurement periods remain separate choices.
 Install `.[weather]` or the local `smhi2epw` checkout to enable generation. For a
 building-specific location, use
 `WeatherReference.from_location(**record.location, year=2023, directory="output/weather")`.
+For EPC heating validation, `sweden_ubem.epc_heating.heating_target_from_record(record)`
+retains two distinct values: source-form delivered heating over the reported
+12-month measurement period and, where the post-v2.6 form reconciles exactly,
+an inferred normal-year delivered-heating target. Match the former to AMY
+simulations for its exact months, using `period_heating_kwh` on each calendar
+year's hourly carrier input. The latter belongs to a normal-year comparison;
+it is not an AMY target. Both retain raw fields, mapping status and exclusions.
+The reproducible Uddevalla panel runner is
+[`scripts/compare_uddevalla_epc_amy.py`](scripts/compare_uddevalla_epc_amy.py);
+it records the common AMY reference point and each building's distance to it.
 `building.widget()`/`building.view()` expose Core geometry inspection.
 
 The runnable [example](examples/postgres_to_epsm.py) retrieves, compiles and writes
