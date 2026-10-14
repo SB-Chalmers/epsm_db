@@ -11,18 +11,60 @@ jobs:
           POSTGRES_USER: ubem_owner
           POSTGRES_PASSWORD: ubem-test-only
           POSTGRES_DB: postgres
-        ports: [5432:5432]
+        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U ubem_owner -d postgres"
           --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: SB-Chalmers/epsm_data
+          ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
+          persist-credentials: false
+          ref: ae102d33eda79fd429fb445ec99b32dabcab8024
+          path: .ci/epsm_data
+      - uses: actions/checkout@v4
+        with:
+          repository: SB-Chalmers/epsm_core
+          ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
+          persist-credentials: false
+          ref: 8a7c5abf9228e7e6c3792f1f34490aaffd1f608f
+          path: .ci/epsm_core
+      - uses: actions/checkout@v4
+        with:
+          repository: SB-Chalmers/epsm_lca
+          ssh-key: ${{ secrets.EPSM_LCA_DEPLOY_KEY }}
+          persist-credentials: false
+          ref: f2e646713d20f0480bb245e344f86d45292efcdd
+          path: .ci/epsm_lca
+      - uses: actions/checkout@v4
+        with:
+          repository: SB-Chalmers/epsm_rc
+          ssh-key: ${{ secrets.EPSM_RC_DEPLOY_KEY }}
+          persist-credentials: false
+          ref: bc65cb2b5ab866ad9909a39b4b7a412beadf84e5
+          path: .ci/epsm_rc
+      - uses: actions/checkout@v4
+        with:
+          repository: SB-Chalmers/epsm
+          ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
+          persist-credentials: false
+          ref: ec32c61acc77915322bb0a82adf8421bbc3b3def
+          path: .ci/epsm
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m pip install -e '.[test,notebook]'
+      - run: python -m pip install build -e .ci/epsm_data -e .ci/epsm_core -e .ci/epsm_lca -e .ci/epsm_rc -e .ci/epsm -e '.[test,notebook,epsm,catalogue]'
       - name: Test fresh schema, loaders, notebook and backup/restore
         env:
           UBEM_TEST_ADMIN_URL: postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/postgres
           UBEM_TEST_BACKUP_CONTAINER: ${{ job.services.postgis.id }}
         run: python -m pytest -q
+      - name: Build and check installed wheel
+        run: |
+          python -m build --wheel
+          python -m pip install --no-deps --force-reinstall dist/epsm_db-*.whl
+          python -m pip check
+          cd /tmp
+          python -c 'from epsm_db import BuildingRecord, Stock; print(BuildingRecord, Stock)'
