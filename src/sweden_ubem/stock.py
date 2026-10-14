@@ -13,6 +13,7 @@ import pandas as pd
 from .database import _connect
 from .epc_heating import heating_target_from_record
 from .io import fetch_records
+from .records import _display_label
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +34,8 @@ class Stock:
     def __repr__(self):
         count = "lazy" if self._count is None else str(self._count)
         return (
-            f"Stock(dataset={self.db.dataset_id!r}, "
-            f"catalogue={self.catalogue.dataset_id!r}, buildings={count})"
+            f"Stock(dataset={_display_label(self.db.dataset_id, 24)}, "
+            f"catalogue={_display_label(self.catalogue.dataset_id, 24)}, buildings={count})"
         )
 
     def __len__(self):
@@ -137,9 +138,9 @@ class StockCell:
     def __repr__(self):
         count = "lazy" if self._members is None else str(len(self._members))
         return (
-            f"StockCell(dataset={self.stock.db.dataset_id!r}, "
-            f"type={self.building_type!r}, era={self.era!r}, "
-            f"ventilation={self.ventilation!r}, buildings={count})"
+            f"StockCell(dataset={_display_label(self.stock.db.dataset_id, 20)}, "
+            f"type={_display_label(self.building_type, 20)}, era={_display_label(self.era, 12)}, "
+            f"ventilation={_display_label(self.ventilation, 8)}, buildings={count})"
         )
 
     @property
