@@ -19,7 +19,8 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=8,<10"]
 notebook = ["matplotlib>=3.9,<4", "nbclient>=0.10,<1", "ipykernel>=6,<8", "jupyterlab>=4,<5"]
-epsm = ["epsm_core>=0.1.0.dev0", "epsm_data>=0.4.0.dev1"]
+catalogue = ["epsm_data>=0.4.0.dev1"]
+epsm = ["epsm>=0.1.0", "epsm_core>=0.2.0.dev0", "epsm_data>=0.4.0.dev1"]
 weather = ["smhi2epw"]
 
 [project.scripts]
