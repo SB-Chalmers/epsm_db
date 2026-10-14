@@ -146,6 +146,10 @@ renovation state. Then
 successful models plus a receipt for every attempted building. Weather can be a
 reference, a UUID-to-reference mapping, or a callable. Catalogue zone and
 renovation choices are model assumptions, not observed database classifications.
+Fully specified cells return independent record copies whose `archetype_assignments`
+retain the selected slot, category, period, state, source and catalogue content hash.
+Partial cells leave assignments unresolved. These links do not apply constructions
+to a Building automatically; model assembly makes that selection explicitly.
 `stock.plot_heating(building_type=..., era=..., ventilation=...)` and
 `stock.plot_atemp(...)` are convenience forms. Stock and cell objects have concise
 representations in notebooks; `sweden_ubem.stock` emits optional debug logs when

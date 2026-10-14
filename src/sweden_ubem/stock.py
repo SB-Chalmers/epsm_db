@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
-from dataclasses import dataclass, field
+from copy import deepcopy
+from dataclasses import dataclass, field, replace
 
 import pandas as pd
 
-from .epc_heating import heating_target_from_record
 from .database import _connect
+from .epc_heating import heating_target_from_record
 from .io import fetch_records
 
 logger = logging.getLogger(__name__)
@@ -177,7 +180,12 @@ class StockCell:
         )
 
     def iter_records(self, *, batch_size=100):
-        """Hydrate selected building records in batches, without loading the whole stock."""
+        """Fetch records in batches and retain fully specified catalogue assumptions.
+
+        A complete cell yields record copies with an explicit assumption link;
+        no source observation or original record is modified. Partial cells do
+        not invent a catalogue selection. This operation queries the database.
+        """
         if (
             not isinstance(batch_size, int)
             or isinstance(batch_size, bool)
@@ -186,12 +194,34 @@ class StockCell:
             raise ValueError("batch_size must be between 1 and 10000")
         reader = fetch_records.using(self.stock.db.database_url, dataset=self.stock.db.dataset_id)
         ids = self.members.building_id.tolist()
+        assignment = None
+        if self.climate_zone is not None and self.ventilation is not None:
+            slot = self.archetype_slot
+            catalogue_json = json.dumps(
+                self.stock.catalogue.to_dict(), sort_keys=True, separators=(",", ":")
+            )
+            assignment = {
+                "kind": "assumption",
+                "source": "stock_cell",
+                "catalogue_dataset": self.stock.catalogue.dataset_id,
+                "catalogue_sha256": hashlib.sha256(catalogue_json.encode()).hexdigest(),
+                "slot_id": slot.slot_id,
+                **slot.key.to_dict(),
+                "construction_years": list(self.stock.catalogue.dimensions["eras"][self.era]),
+            }
         for offset in range(0, len(ids), batch_size):
             page = reader.from_uuids(ids[offset : offset + batch_size])
             if page.receipt.truncated or len(page) != len(ids[offset : offset + batch_size]):
                 raise LookupError("Stock cell changed while fetching records; rerun the selection")
             logger.debug("Hydrated %d records for %r", len(page), self)
-            yield from page
+            for record in page:
+                if assignment is None:
+                    yield record
+                else:
+                    assignments = deepcopy(record.archetype_assignments)
+                    if assignment not in assignments:
+                        assignments += (deepcopy(assignment),)
+                    yield replace(record, archetype_assignments=assignments)
 
     def __iter__(self):
         return self.iter_records()
