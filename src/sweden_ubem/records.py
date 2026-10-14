@@ -176,6 +176,11 @@ class BuildingRecord:
             "receipt": self.receipt.summary(),
         }
 
+    @property
+    def crs(self):
+        """Coordinate reference system of this database's metric geometries."""
+        return "EPSG:3006"
+
     def to_dict(self):
         """Portable evidence without the database connection or credentials."""
         from epsm_db.serialization import record_to_dict
