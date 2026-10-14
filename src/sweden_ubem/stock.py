@@ -53,7 +53,7 @@ class Stock:
 
     def cell(
         self, *, building_type, era, ventilation=None, climate_zone=None,
-        renovation_state="existing",
+        renovation_state=None,
     ):
         """Select records and declare optional model-catalogue dimensions."""
         return StockCell(
@@ -107,7 +107,7 @@ class StockCell:
     era: str
     ventilation: str | None = None
     climate_zone: str | None = None
-    renovation_state: str = "existing"
+    renovation_state: str | None = None
     _members: pd.DataFrame | None = field(default=None, init=False, repr=False)
     _frame: pd.DataFrame | None = field(default=None, init=False, repr=False)
     _heating: pd.DataFrame | None = field(default=None, init=False, repr=False)
@@ -123,7 +123,12 @@ class StockCell:
             raise ValueError(f"Unknown EPSM ventilation system: {self.ventilation}")
         if self.climate_zone is not None and self.climate_zone not in dimensions["zones"]:
             raise ValueError(f"Unknown EPSM climate zone: {self.climate_zone}")
-        if self.renovation_state not in dimensions["states"]:
+        if self.era == "SE.07":
+            if self.renovation_state is not None:
+                raise ValueError("SE.07 has no renovation states")
+        elif self.renovation_state is None:
+            self.renovation_state = "existing"
+        if self.renovation_state is not None and self.renovation_state not in dimensions["states"]:
             raise ValueError(f"Unknown EPSM renovation state: {self.renovation_state}")
 
     def __repr__(self):

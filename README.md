@@ -365,3 +365,13 @@ certificates, immutable publication, read-only interfaces, notebook execution,
 exports and backup/restore. Real-source parity and national capacity measurements
 are separate acceptance gates; a passing synthetic suite does not establish UBEM
 simulation readiness.
+
+## Harmonised Python interface
+
+The distribution is now `epsm_db`. Use `from epsm_db import Database, Stock,
+BuildingRecord`. Existing `sweden_ubem` imports and command remain available.
+There is one Stock and one BuildingRecord implementation. Ingestion and live
+database schemas are unchanged. `record.to_dict()` preserves evidence and
+geometry without credentials; `BuildingRecord.from_dict()` reconstructs a
+disconnected record. `record.to_epsm()` delegates to `epsm.Building.from_record`.
+SE.07 covers 2022 onward and accepts no renovation-state selector.

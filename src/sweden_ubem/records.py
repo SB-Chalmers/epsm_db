@@ -125,7 +125,22 @@ class BuildingRecord:
     epc_results: tuple[dict, ...] = ()
     quality_findings: tuple[dict, ...] = ()
     receipt: Receipt = field(default_factory=lambda: Receipt("unknown"))
+    archetype_assignments: tuple[dict, ...] = ()
     _database_url: str | None = field(default=None, repr=False, compare=False)
+
+    def to_dict(self):
+        """Portable evidence without the database connection or credentials."""
+        from epsm_db.serialization import record_to_dict
+        return record_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, value):
+        from epsm_db.serialization import record_from_dict
+        return record_from_dict(value)
+
+    def completeness(self):
+        """Field-level evidence availability retained by the retrieval receipt."""
+        return self.receipt.completeness
 
     @property
     def selected_certificate(self):
@@ -263,9 +278,9 @@ class BuildingRecord:
         )
 
     def to_epsm(self, **kwargs):
-        from .epsm import EPSMBuilding
+        from epsm import Building
 
-        return EPSMBuilding.from_record(self, **kwargs)
+        return Building.from_record(self, **kwargs)
 
 
 @dataclass(frozen=True)
