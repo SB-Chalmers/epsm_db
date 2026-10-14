@@ -686,8 +686,12 @@ class EPSMBuilding:
                 "ventilation",
                 "wwr",
                 "climate_zone",
+                "renovation_state",
             }:
                 raise ValueError("Unknown model override")
+            renovation_state = overrides.get("renovation_state", "existing")
+            if renovation_state not in ("existing", "standard", "advanced"):
+                raise ValueError("renovation_state must be existing, standard or advanced")
             receipt.identities["policy"] = asdict(policy)
             receipt.identities["overrides"] = overrides
             geometry = _geometry(record, policy, receipt, overrides)
@@ -738,6 +742,7 @@ class EPSMBuilding:
                 construction_year=int(year),
                 climate_zone=zone,
                 ventilation=ventilation,
+                default_state=renovation_state,
                 tabula_reference_area_m2=area,
                 conditioned_volume_m3=geometry.conditioned_volume_m3,
             )
@@ -819,6 +824,8 @@ class EPSMBuilding:
             receipt.identities["archetype_assignment"] = fabric["assignment"]
             receipt.assumptions.append(
                 "Matrix existing state is a construction-era representative; renovations are not inferred"
+                if renovation_state == "existing" else
+                f"Matrix {renovation_state} renovation package is an explicit scenario, not an observed building state"
             )
             receipt.assumptions.append(
                 "Operational reference area distributed by conditioned geometric area; it does not change heated extent"

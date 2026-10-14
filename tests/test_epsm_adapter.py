@@ -58,6 +58,22 @@ def test_multifamily_native_area_infiltration_and_dhw(weather):
     assert receipt.ready_for_simulation
 
 
+def test_explicit_renovation_scenario_changes_matrix_fabric(weather):
+    record = make_record(type=BuildingType.RESIDENTIAL_MULTIFAMILY)
+    existing, original_receipt = EPSMBuilding.from_record(record, weather=weather)
+    assert original_receipt.identities["archetype_assignment"]["components"]["wall"]["state"] == "existing"
+    for state in ("standard", "advanced"):
+        renovated, receipt = EPSMBuilding.from_record(
+            record, weather=weather, overrides={"renovation_state": state}
+        )
+        assert receipt.identities["archetype_assignment"]["components"]["wall"]["state"] == state
+        assert existing.spec.envelope.wall != renovated.spec.envelope.wall
+        assert existing.spec.geometry == renovated.spec.geometry
+        assert any("explicit scenario" in text for text in receipt.assumptions)
+    with pytest.raises(ModelAssemblyError, match="renovation_state"):
+        EPSMBuilding.from_record(record, weather=weather, overrides={"renovation_state": "unknown"})
+
+
 def test_mixed_fractional_programmes_compile_on_common_building_controls(weather):
     record = make_record(programmes={"EgenAtempBostad": 80, "EgenAtempKontor": 20})
     building, receipt = EPSMBuilding.from_record(record, weather=weather)

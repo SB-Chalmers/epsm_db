@@ -246,6 +246,11 @@ individual quantities. Fractional residential/office/school programmes use nativ
 `ProgramBlend`, primary-use controls and common ventilation. Unsupported positive
 shares fail; missing shares use a declared primary-use scenario. Matrix `existing`
 constructions and office/school calendars remain assumptions.
+For an explicit envelope scenario, pass
+`overrides={"renovation_state": "standard"}` or `"advanced"` to
+`EPSMBuilding.from_record`. This selects the EPSM Data package for fabric,
+glazing and infiltration while retaining geometry and operational inputs; the
+selected state is recorded as a scenario, not inferred renovation evidence.
 Residential DHW uses Core's type-specific historical normal-use profiles: SF and
 MF remain distinct. Initial models have no neighbouring shading/party-wall
 assignments; use the native Core context/contact interfaces when those are available.
