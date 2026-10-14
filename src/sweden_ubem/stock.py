@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
-from dataclasses import dataclass, field
+from copy import deepcopy
+from dataclasses import dataclass, field, replace
 
 import pandas as pd
 
-from .epc_heating import heating_target_from_record
 from .database import _connect
+from .epc_heating import heating_target_from_record
 from .io import fetch_records
+from .records import _display_label
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +34,8 @@ class Stock:
     def __repr__(self):
         count = "lazy" if self._count is None else str(self._count)
         return (
-            f"Stock(dataset={self.db.dataset_id!r}, "
-            f"catalogue={self.catalogue.dataset_id!r}, buildings={count})"
+            f"Stock(dataset={_display_label(self.db.dataset_id, 24)}, "
+            f"catalogue={_display_label(self.catalogue.dataset_id, 24)}, buildings={count})"
         )
 
     def __len__(self):
@@ -53,7 +57,7 @@ class Stock:
 
     def cell(
         self, *, building_type, era, ventilation=None, climate_zone=None,
-        renovation_state="existing",
+        renovation_state=None,
     ):
         """Select records and declare optional model-catalogue dimensions."""
         return StockCell(
@@ -107,7 +111,7 @@ class StockCell:
     era: str
     ventilation: str | None = None
     climate_zone: str | None = None
-    renovation_state: str = "existing"
+    renovation_state: str | None = None
     _members: pd.DataFrame | None = field(default=None, init=False, repr=False)
     _frame: pd.DataFrame | None = field(default=None, init=False, repr=False)
     _heating: pd.DataFrame | None = field(default=None, init=False, repr=False)
@@ -123,15 +127,20 @@ class StockCell:
             raise ValueError(f"Unknown EPSM ventilation system: {self.ventilation}")
         if self.climate_zone is not None and self.climate_zone not in dimensions["zones"]:
             raise ValueError(f"Unknown EPSM climate zone: {self.climate_zone}")
-        if self.renovation_state not in dimensions["states"]:
+        if self.era == "SE.07":
+            if self.renovation_state is not None:
+                raise ValueError("SE.07 has no renovation states")
+        elif self.renovation_state is None:
+            self.renovation_state = "existing"
+        if self.renovation_state is not None and self.renovation_state not in dimensions["states"]:
             raise ValueError(f"Unknown EPSM renovation state: {self.renovation_state}")
 
     def __repr__(self):
         count = "lazy" if self._members is None else str(len(self._members))
         return (
-            f"StockCell(dataset={self.stock.db.dataset_id!r}, "
-            f"type={self.building_type!r}, era={self.era!r}, "
-            f"ventilation={self.ventilation!r}, buildings={count})"
+            f"StockCell(dataset={_display_label(self.stock.db.dataset_id, 20)}, "
+            f"type={_display_label(self.building_type, 20)}, era={_display_label(self.era, 12)}, "
+            f"ventilation={_display_label(self.ventilation, 8)}, buildings={count})"
         )
 
     @property
@@ -172,7 +181,12 @@ class StockCell:
         )
 
     def iter_records(self, *, batch_size=100):
-        """Hydrate selected building records in batches, without loading the whole stock."""
+        """Fetch records in batches and retain fully specified catalogue assumptions.
+
+        A complete cell yields record copies with an explicit assumption link;
+        no source observation or original record is modified. Partial cells do
+        not invent a catalogue selection. This operation queries the database.
+        """
         if (
             not isinstance(batch_size, int)
             or isinstance(batch_size, bool)
@@ -181,12 +195,34 @@ class StockCell:
             raise ValueError("batch_size must be between 1 and 10000")
         reader = fetch_records.using(self.stock.db.database_url, dataset=self.stock.db.dataset_id)
         ids = self.members.building_id.tolist()
+        assignment = None
+        if self.climate_zone is not None and self.ventilation is not None:
+            slot = self.archetype_slot
+            catalogue_json = json.dumps(
+                self.stock.catalogue.to_dict(), sort_keys=True, separators=(",", ":")
+            )
+            assignment = {
+                "kind": "assumption",
+                "source": "stock_cell",
+                "catalogue_dataset": self.stock.catalogue.dataset_id,
+                "catalogue_sha256": hashlib.sha256(catalogue_json.encode()).hexdigest(),
+                "slot_id": slot.slot_id,
+                **slot.key.to_dict(),
+                "construction_years": list(self.stock.catalogue.dimensions["eras"][self.era]),
+            }
         for offset in range(0, len(ids), batch_size):
             page = reader.from_uuids(ids[offset : offset + batch_size])
             if page.receipt.truncated or len(page) != len(ids[offset : offset + batch_size]):
                 raise LookupError("Stock cell changed while fetching records; rerun the selection")
             logger.debug("Hydrated %d records for %r", len(page), self)
-            yield from page
+            for record in page:
+                if assignment is None:
+                    yield record
+                else:
+                    assignments = deepcopy(record.archetype_assignments)
+                    if assignment not in assignments:
+                        assignments += (deepcopy(assignment),)
+                    yield replace(record, archetype_assignments=assignments)
 
     def __iter__(self):
         return self.iter_records()

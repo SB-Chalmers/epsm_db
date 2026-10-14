@@ -1,6 +1,6 @@
 # epsm_db — UBEM Evidence Database
 
-Version **0.0.4**. Tested on PostgreSQL 15 and 17 / PostGIS 3.5. EPSG:3006.
+Python package version **0.1.0**; database schema **0.0.4**. Tested on PostgreSQL 15 and 17 / PostGIS 3.5. EPSG:3006.
 
 Initialize shared national LM, height, property, address, EPC and available SCB
 evidence once. Process Uddevalla (`1485`), another municipality, or Sweden through
@@ -35,7 +35,7 @@ Its self-contained preservation set is `output/retained/uddevalla-2026-10-12/`.
 The retained dump was restored and all 29 public projections, including full
 geometry and field mappings, matched both the baseline and the live database.
 
-A reusable [stock exploration notebook](notebooks/explore_stock.ipynb) shows catalogue cells, evidence inspection and heating plots. Configure a read-only `UBEM_DATABASE_URL` before running it. The import remains `sweden_ubem` during the planned package migration.
+A reusable [stock exploration notebook](notebooks/explore_stock.ipynb) shows catalogue cells, evidence inspection and heating plots. Configure a read-only `UBEM_DATABASE_URL` before running it. New code imports `Database`, `Stock` and `BuildingRecord` from `epsm_db`. Existing `sweden_ubem` imports and commands remain available for compatibility.
 
 ## Setup
 
@@ -101,9 +101,9 @@ certificates are inspectable as support; their unrelated certificates do not ent
 the selection. Defaults remain primary buildings with verified existing status.
 
 ```python
-from sweden_ubem import UBEM
+from epsm_db import Database
 
-db = UBEM(dataset="uddevalla")
+db = Database(dataset="uddevalla")  # Opens the database to verify this dataset
 db.archetype_matrix()  # All buildings by EPSM category and register-year era
 db.archetype_matrix(building_type="multi_family")  # One category
 db.ventilation_counts(building_type="multi_family", era="SE.01")  # Reported systems
@@ -116,7 +116,7 @@ building.epc_certificates()
 db.completeness()
 ```
 
-`archetype_matrix()` requires the optional `epsm_data` package. It includes
+`archetype_matrix()` and `stock()` require the optional `epsm_data` package (`pip install "epsm_db[catalogue]"`). It includes
 buildings without EPCs and reports missing register years in a separate column.
 `ventilation_counts()` separates reported S/F/FT/FTX from missing or unresolved
 EPC ventilation evidence; it does not count model defaults as reports.
@@ -139,11 +139,17 @@ for record in cell:
 ```
 
 `stock` and its cells fetch records in bounded batches. A full EPSM catalogue slot
-also needs an explicit `climate_zone` and `renovation_state`; then
+also needs an explicit `climate_zone` and `ventilation`. SE.01–SE.06 default
+to the `existing` renovation state; SE.07 covers 2022 onward and accepts no
+renovation state. Then
 `cell.archetype_slot` resolves the slot, and `cell.to_epsm(weather=...)` returns
 successful models plus a receipt for every attempted building. Weather can be a
 reference, a UUID-to-reference mapping, or a callable. Catalogue zone and
 renovation choices are model assumptions, not observed database classifications.
+Fully specified cells return independent record copies whose `archetype_assignments`
+retain the selected slot, category, period, state, source and catalogue content hash.
+Partial cells leave assignments unresolved. These links do not apply constructions
+to a Building automatically; model assembly makes that selection explicitly.
 `stock.plot_heating(building_type=..., era=..., ventilation=...)` and
 `stock.plot_atemp(...)` are convenience forms. Stock and cell objects have concise
 representations in notebooks; `sweden_ubem.stock` emits optional debug logs when
@@ -235,9 +241,37 @@ EPSM integration is optional. Install local checkouts into the same environment,
 or use `.[epsm]` when these package versions are available:
 
 ```sh
-.venv/bin/pip install -e ../epsm_core -e ../epsm_data
+.venv/bin/pip install -e ../epsm_data -e ../epsm_core -e ../epsm_lca -e ../epsm
 export ENERGYPLUS_EXE=/Applications/OpenStudio-3.9.0/EnergyPlus/energyplus
 ```
+
+The current interface authors a physical Building without opening another database connection:
+
+```python
+import json
+from epsm import Building
+from epsm_db import BuildingRecord
+
+payload = json.loads(json.dumps(record.to_dict()))
+restored = BuildingRecord.from_dict(payload)
+assert restored._database_url is None  # Retrieval credentials are excluded
+building = Building.from_record(restored, storey_height_m=2.8)
+print(building.readiness())
+```
+
+The explicit storey height is a modelling assumption; the adapter preserves source
+observations separately. Incomplete records produce an incomplete Building.
+Record and receipt `repr()`/`str()` are bounded, single-line summaries. Use
+`record.summary()` or `receipt.summary()` for loaded metadata, and
+`print(receipt.report())` for the detailed completeness table and findings.
+These inspection methods do not query the database.
+Portable records retain component and address geometries, certificate dates,
+observations, quality findings and receipt metadata in EPSG:3006. They do not retain
+the source database connection. Explicit subsequent queries require a configured
+connection. `record.to_epsm(...)` forwards to the same `Building.from_record` interface.
+
+The earlier adapter remains available for existing studies; its assembly now lives
+in `epsm`, and the following example uses that compatibility interface:
 
 ```python
 from sweden_ubem.epsm import EPSMBuilding, ModelPolicy
@@ -365,3 +399,13 @@ certificates, immutable publication, read-only interfaces, notebook execution,
 exports and backup/restore. Real-source parity and national capacity measurements
 are separate acceptance gates; a passing synthetic suite does not establish UBEM
 simulation readiness.
+
+## Harmonised Python interface
+
+The distribution is now `epsm_db`. Use `from epsm_db import Database, Stock,
+BuildingRecord`. Existing `sweden_ubem` imports and command remain available.
+There is one Stock and one BuildingRecord implementation. Ingestion and live
+database schemas are unchanged. `record.to_dict()` preserves evidence and
+geometry without credentials; `BuildingRecord.from_dict()` reconstructs a
+disconnected record. `record.to_epsm()` delegates to `epsm.Building.from_record`.
+SE.07 covers 2022 onward and accepts no renovation-state selector.

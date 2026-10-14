@@ -6,6 +6,7 @@ import hashlib
 import importlib
 import json
 import math
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum
@@ -16,6 +17,17 @@ import pandas as pd
 
 from .enums import BuildingType
 from .epc import strict_value
+
+
+def _display_label(value, limit=24):
+    """Bound a fully escaped label without cutting escape sequences."""
+    text = str(value)
+    if len(repr(text)) <= limit:
+        return repr(text)
+    text = text[:limit]
+    while len(repr(text + "…")) > limit:
+        text = text[:-1]
+    return repr(text + "…")
 
 
 def implementation_hash(module_name):
@@ -58,6 +70,19 @@ class Receipt:
     truncated: bool = False
     next_cursor: str | None = None
 
+    def __repr__(self):
+        return (
+            f"Receipt(dataset={_display_label(self.dataset_id)}, "
+            f"building={_display_label(self.building_id)}, fields={len(self.fields)}, "
+            f"errors={len(self.errors)}, ready={self.ready_for_simulation})"
+        )
+
+    __str__ = __repr__
+
+    def summary(self):
+        """Return independent loaded evidence and findings, without performing I/O."""
+        return deepcopy(self.to_dict())
+
     @property
     def completeness(self):
         rows = [
@@ -91,7 +116,8 @@ class Receipt:
     def to_json(self):
         return json.dumps(self.to_dict(), indent=2, ensure_ascii=False, default=json_default)
 
-    def __str__(self):
+    def report(self):
+        """Format the loaded completeness table and findings without performing I/O."""
         title = f"{self.dataset_id}: {self.building_id or 'selection'}"
         lines = [title, f"Simulation ready: {self.ready_for_simulation}"]
         if self.fields:
@@ -125,7 +151,49 @@ class BuildingRecord:
     epc_results: tuple[dict, ...] = ()
     quality_findings: tuple[dict, ...] = ()
     receipt: Receipt = field(default_factory=lambda: Receipt("unknown"))
+    archetype_assignments: tuple[dict, ...] = ()
     _database_url: str | None = field(default=None, repr=False, compare=False)
+
+    def __repr__(self):
+        return (
+            f"BuildingRecord(id={_display_label(self.building_id)}, "
+            f"dataset={_display_label(self.dataset_id)}, components={len(self.components)}, "
+            f"observations={len(self.observations)})"
+        )
+
+    __str__ = __repr__
+
+    def summary(self):
+        """Inspect loaded evidence metadata without querying or exposing credentials."""
+        return {
+            "dataset_id": self.dataset_id,
+            "building_id": self.building_id,
+            "type": self.type.value,
+            "facts": deepcopy(self.facts),
+            "components": len(self.components),
+            "observations": len(self.observations),
+            "archetype_assignments": deepcopy(self.archetype_assignments),
+            "receipt": self.receipt.summary(),
+        }
+
+    @property
+    def crs(self):
+        """Coordinate reference system of this database's metric geometries."""
+        return "EPSG:3006"
+
+    def to_dict(self):
+        """Portable evidence without the database connection or credentials."""
+        from epsm_db.serialization import record_to_dict
+        return record_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, value):
+        from epsm_db.serialization import record_from_dict
+        return record_from_dict(value)
+
+    def completeness(self):
+        """Field-level evidence availability retained by the retrieval receipt."""
+        return self.receipt.completeness
 
     @property
     def selected_certificate(self):
@@ -263,9 +331,9 @@ class BuildingRecord:
         )
 
     def to_epsm(self, **kwargs):
-        from .epsm import EPSMBuilding
+        from epsm import Building
 
-        return EPSMBuilding.from_record(self, **kwargs)
+        return Building.from_record(self, **kwargs)
 
 
 @dataclass(frozen=True)
