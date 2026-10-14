@@ -261,6 +261,10 @@ print(building.readiness())
 
 The explicit storey height is a modelling assumption; the adapter preserves source
 observations separately. Incomplete records produce an incomplete Building.
+Record and receipt `repr()`/`str()` are bounded, single-line summaries. Use
+`record.summary()` or `receipt.summary()` for loaded metadata, and
+`print(receipt.report())` for the detailed completeness table and findings.
+These inspection methods do not query the database.
 Portable records retain component and address geometries, certificate dates,
 observations, quality findings and receipt metadata in EPSG:3006. They do not retain
 the source database connection. Explicit subsequent queries require a configured

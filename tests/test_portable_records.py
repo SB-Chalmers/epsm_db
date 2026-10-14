@@ -46,3 +46,38 @@ def test_roundtrip_preserves_nested_component_and_address_geometries():
     assert restored.addresses[0]["geometry"].equals(Point(2, 3))
     assert restored.components[0]["component_id"] == "one:shape"
     assert restored._database_url is None
+
+
+def test_record_and_receipt_inspection_is_bounded_and_connection_free(monkeypatch):
+    from epsm_db import Receipt
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Inspection must not query the database")
+
+    monkeypatch.setattr("sweden_ubem.database._connect", forbidden)
+    unusual = "long\\\n\t\x00🧱" * 200
+    receipt = Receipt(
+        unusual,
+        building_id=unusual,
+        fields={"height": {"value": None}},
+        errors=["an unresolved source"],
+    )
+    record = BuildingRecord(
+        unusual,
+        unusual,
+        BuildingType("single_family"),
+        None,
+        {"year": 2022},
+        receipt=receipt,
+        _database_url="private-secret",
+    )
+    for obj in (record, receipt):
+        assert len(repr(obj)) <= 160
+        assert len(str(obj)) <= 160
+        assert "\n" not in repr(obj) and "\n" not in str(obj)
+        assert "private-secret" not in repr(obj)
+        assert obj.summary()["dataset_id"] == unusual
+    assert record.summary()["facts"] == {"year": 2022}
+    record.summary()["facts"]["year"] = 1900
+    assert record.facts["year"] == 2022
+    assert "an unresolved source" in receipt.report()
