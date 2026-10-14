@@ -160,6 +160,25 @@ class RecordFetcher:
             **kwargs,
         )
 
+    def from_uuids(self, building_ids, **kwargs):
+        """Retrieve a bounded set of UUIDs in one read-only transaction."""
+        ids = list(dict.fromkeys(str(UUID(str(value))) for value in building_ids))
+        if len(ids) > 10000:
+            raise ValueError("Supply at most 10000 building IDs per request")
+        kwargs.setdefault("include_support", True)
+        kwargs.setdefault("include_other_statuses", True)
+        kwargs.setdefault("limit", max(1, len(ids)))
+        return self._fetch(
+            "f.building_id=ANY(%s::uuid[])",
+            [ids],
+            request={"selector": "uuids", "count": len(ids)},
+            **kwargs,
+        )
+
+    def all(self, **kwargs):
+        """Page through all buildings in the selected dataset."""
+        return self._fetch("true", [], request={"selector": "all"}, **kwargs)
+
     def from_point(self, x, y, *, epsg=3006, **kwargs):
         if not all(math.isfinite(float(v)) for v in (x, y)):
             raise ValueError("Point coordinates must be finite")

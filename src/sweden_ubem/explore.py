@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import os
+from collections import Counter
 from dataclasses import dataclass
 import geopandas as gpd
 import pandas as pd
@@ -45,6 +46,12 @@ class UBEM:
 
     def __repr__(self):
         return f"UBEM(dataset={self.dataset_id!r})"
+
+    def stock(self):
+        """Explore this dataset as a lazy building stock with an EPSM catalogue."""
+        from .stock import Stock
+
+        return Stock(self)
 
     def _view(self, name, *, building_id=None, geo=False, area_type=None):
         with _connect(self.database_url) as c:
@@ -107,6 +114,160 @@ class UBEM:
             + " ORDER BY f.building_id",
             params,
             geo=True,
+        )
+
+    def archetype_matrix(self, *, building_type=None):
+        """Count dataset buildings by EPSM type and register-year era.
+
+        Missing construction years have their own column. No EPC, building status,
+        selection-role, or geometry filter is applied. The shared building type
+        rule may use EPC evidence to distinguish some school and office uses.
+        Pass an EPSM category as ``building_type`` to return one row. Requires
+        the optional ``epsm_data`` package.
+        """
+        from epsm_data.parametric import era_for_year, load_parametric_catalogue
+
+        from .enums import BuildingType
+        from .io import TYPE_SQL
+
+        catalogue = load_parametric_catalogue()
+        categories = list(catalogue.dimensions["categories"])
+        if building_type is not None:
+            if building_type not in categories:
+                raise ValueError(f"Unknown EPSM building type: {building_type}")
+            categories = [building_type]
+        query = (
+            f"SELECT {TYPE_SQL} AS building_type, f.construction_year, count(*) AS buildings "
+            "FROM mart.building_facts f WHERE f.dataset_id=%s "
+            "GROUP BY building_type, f.construction_year"
+        )
+        counts = Counter()
+        for row in _rows(self.database_url, query, (self.dataset_id,)):
+            category = BuildingType(row["building_type"]).archetype_category
+            year = row["construction_year"]
+            era = era_for_year(year) if isinstance(year, int) and year > 0 else "Missing year"
+            counts[category, era] += row["buildings"]
+
+        eras = [*catalogue.dimensions["eras"], "Missing year"]
+        matrix = pd.DataFrame(
+            [[counts[category, era] for era in eras] for category in categories],
+            index=pd.Index(categories, name="building_type"),
+            columns=eras,
+        )
+        matrix["Total"] = matrix.sum(axis=1)
+        if building_type is None:
+            matrix.loc["TOTAL"] = matrix.sum(axis=0)
+        return matrix
+
+    def ventilation_buildings(self, *, building_type, era):
+        """List a type/era cohort with reported EPC ventilation topology.
+
+        Uses the same unique latest, verified, single-building certificate rule
+        as the record adapter. Missing or ambiguous evidence is kept explicit;
+        EPSM type defaults are not counted as reported ventilation.
+        """
+        from epsm_data.parametric import load_parametric_catalogue
+
+        from .io import TYPE_SQL
+
+        dimensions = load_parametric_catalogue().dimensions
+        if building_type not in dimensions["categories"]:
+            raise ValueError(f"Unknown EPSM building type: {building_type}")
+        if era not in dimensions["eras"]:
+            raise ValueError(f"Unknown EPSM era: {era}")
+        start, end = dimensions["eras"][era]
+        year_filter = "f.construction_year >= %s"
+        params = [self.dataset_id, start]
+        if end is not None:
+            year_filter += " AND f.construction_year <= %s"
+            params.append(end)
+        type_filter = (
+            f"({TYPE_SQL}) NOT IN ('single_family','multi_family','school','office')"
+            if building_type == "generic"
+            else f"({TYPE_SQL})=%s"
+        )
+        if building_type != "generic":
+            params.append(building_type)
+        query = (
+            "SELECT f.building_id FROM mart.building_facts f "
+            f"WHERE f.dataset_id=%s AND {year_filter} AND {type_filter}"
+        )
+
+        with _connect(self.database_url) as c:
+            ids = [row[0] for row in c.execute(query, params)]
+            if not ids:
+                return pd.DataFrame(columns=["building_id", "ventilation_system", "certificate_id"])
+            certificate_rows = c.execute(
+                "SELECT DISTINCT l.building_id,c.certificate_id,c.certificate_date,c.date_status,"
+                "c.subject_count,c.loaded_building_count,c.matching_status "
+                "FROM mart.building_epc l JOIN mart.epc_certificates c "
+                "USING(dataset_id,certificate_id) "
+                "WHERE l.dataset_id=%s AND l.building_id=ANY(%s)",
+                (self.dataset_id, ids),
+            ).fetchall()
+
+            by_building = {}
+            for row in certificate_rows:
+                by_building.setdefault(row[0], []).append(row[1:])
+            selected = {}
+            for building_id, certs in by_building.items():
+                if any(cert[1] is None or cert[2] != "verified" for cert in certs):
+                    continue
+                latest = max(cert[1] for cert in certs)
+                candidates = [cert for cert in certs if cert[1] == latest]
+                if len(candidates) != 1:
+                    continue
+                cert = candidates[0]
+                if cert[3] == 1 and cert[4] == 1 and cert[5] == "fully_matched":
+                    selected[building_id] = cert[0]
+
+            codes = {
+                "VentTypSjalvdrag": "S",
+                "VentTypF": "F",
+                "VentTypFmed": "F",
+                "VentTypFT": "FT",
+                "VentTypFTX": "FTX",
+            }
+            positive = {certificate_id: set() for certificate_id in selected.values()}
+            if positive:
+                observations = c.execute(
+                    "SELECT certificate_id,source_field,raw_values "
+                    "FROM mart.epc_observations WHERE dataset_id=%s "
+                    "AND certificate_id=ANY(%s) AND source_field=ANY(%s)",
+                    (self.dataset_id, list(positive), list(codes)),
+                ).fetchall()
+                grouped = {}
+                for certificate_id, field, values in observations:
+                    grouped.setdefault((certificate_id, field), []).append(values)
+                for (certificate_id, field), values in grouped.items():
+                    if (
+                        len(values) == 1
+                        and len(values[0]) == 1
+                        and str(values[0][0]).strip().casefold() in {"ja", "true", "1"}
+                    ):
+                        positive[certificate_id].add(codes[field])
+
+        buildings = []
+        for building_id in ids:
+            if building_id not in by_building:
+                label = "No linked EPC"
+            elif building_id not in selected or len(positive[selected[building_id]]) != 1:
+                label = "Unresolved EPC ventilation"
+            else:
+                label = next(iter(positive[selected[building_id]]))
+            buildings.append((building_id, label, selected.get(building_id)))
+        return pd.DataFrame(
+            buildings, columns=["building_id", "ventilation_system", "certificate_id"]
+        )
+
+    def ventilation_counts(self, *, building_type, era):
+        """Count a type/era cohort by reported EPC ventilation topology."""
+        buildings = self.ventilation_buildings(building_type=building_type, era=era)
+        counts = Counter(buildings["ventilation_system"])
+        labels = ["S", "F", "FT", "FTX", "No linked EPC", "Unresolved EPC ventilation"]
+        return pd.DataFrame(
+            {"buildings": [counts[label] for label in labels]},
+            index=pd.Index(labels, name="ventilation_system"),
         )
 
     def building(self, building_id):

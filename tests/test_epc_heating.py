@@ -25,6 +25,9 @@ def test_post_v260_keeps_period_and_normal_year_targets_separate():
     assert target.period_start == date(2019, 7, 1)
     assert target.period_end_exclusive == date(2020, 7, 1)
     assert target.reported_period_heating_kwh == 10000
+    assert target.reported_heating_basis == "separate_UPPV_fields"
+    assert target.combined_heating_dhw_kwh is None
+    assert target.dhw_subtracted_kwh is None
     assert target.inferred_normal_year_heating_kwh == 9000
     assert target.normal_year_inference
     raw["EgiBeraknatVarde"] = ["Ja"]
@@ -39,6 +42,9 @@ def test_pre_v260_subtracts_reported_dhw_only():
            "EgiVVBered": ["3000"]}
     target = heating_target_from_raw("fore_v260:1", raw)
     assert target.reported_period_heating_kwh == 10000
+    assert target.reported_heating_basis == "combined_carrier_minus_EgiVVBered"
+    assert target.combined_heating_dhw_kwh == 13000
+    assert target.dhw_subtracted_kwh == 3000
     assert target.inferred_normal_year_heating_kwh is None
 
 

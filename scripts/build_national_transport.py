@@ -89,7 +89,8 @@ fresh database, then install the application with the measured dependency pins:
 
     python3.12 -m venv .venv
     .venv/bin/pip install -c requirements-tested.txt -e './application[notebook]'
-    export UBEM_SOURCE_ROOT="$PWD/sources"
+    export UBEM_TRANSPORT_ROOT="$PWD"
+    export UBEM_SOURCE_ROOT="$UBEM_TRANSPORT_ROOT/sources"
     export UBEM_DATABASE_URL='postgresql://USER:PASSWORD@127.0.0.1:PORT/DATABASE'
     export UBEM_CAPACITY_GUARD_PATH='/absolute/path/to/the/database/filesystem'
     export UBEM_MIN_FREE_BYTES=16106127360
@@ -103,7 +104,7 @@ Verify bundle closure and required sources, then import once:
 
 Reproduce Uddevalla and compare its full-geometry baseline before broader release:
 
-    .venv/bin/python application/scripts/validate_reimplementation.py --database-url "$UBEM_DATABASE_URL" --source-root "$UBEM_SOURCE_ROOT" --baseline "$PWD/acceptance/uddevalla/baseline/full-geometry" --output "$PWD/remote-uddevalla-acceptance"
+    (cd application && ../.venv/bin/python scripts/validate_reimplementation.py --database-url "$UBEM_DATABASE_URL" --source-root "$UBEM_SOURCE_ROOT" --baseline "$UBEM_TRANSPORT_ROOT/acceptance/uddevalla/baseline/full-geometry" --output "$UBEM_TRANSPORT_ROOT/remote-uddevalla-acceptance")
 
 The acceptance script disconnects the raw root while checking ordinary consumers.
 After acceptance, process national or individual municipal selections:

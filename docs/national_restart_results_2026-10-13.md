@@ -119,3 +119,35 @@ national publication acceptance.
 
 The machine-readable sizing receipt is `output/remote-transfer/size-and-capacity.json`.
 No remote target has been selected or uploaded to.
+
+## Measured compressed execution transport
+
+A fresh required-file audit excludes `boverket/epc/comparison/` from the execution
+transport while preserving those historical processed outputs locally. The
+selected source inventory preserves 158,843 original file occurrences, 109,482
+physical assets, and all 63,842 referenced height measurement units. Catalogue
+references exactly match the measurement mappings. Prepared component and lineage
+counts, all declared partition hashes, the 13 EPC files and their 1,883,795 rows,
+registry XML file closure, site-event PDFs and the real SCB snapshot pass checks.
+The 162 retained Uddevalla checksum entries were reverified separately.
+
+The transport contains the application, dependency pins, national source inputs
+and supporting provenance, and the Uddevalla restoration/acceptance material.
+Its Zstandard level-6 archive is **15,453,199,209 bytes (15.45 GB / 14.39 GiB)**.
+Every one of its 109,742 file occurrences was read back from the compressed
+archive and verified, including hard-link targets. Its SHA-256 is
+`a9d7330826291836de458e5b2a3433842bb013730e0011ca9e5d774ddfdb8be9`.
+
+Archive, checksum, audit receipts and the companion deployment guide are under
+`output/remote-transfer/`. Use `RUN-REMOTE.md` for the acceptance command's explicit
+application working directory. The packaged application includes verified SCB
+source-root resolution fixes and has digest
+`dfb07ad222cc4d59af5b72f1d4ca47b921c13e90f5a2804fdfbcc8e22668d606`.
+Relocation tests and 25 disposable PostGIS integration tests passed. Historical
+source manifests remain byte-identical; the transport carries a generated subset
+inventory for the selected logical occurrences.
+
+This measures the transport of currently available national inputs. It does not
+resolve the existing national RegSO/income coverage, height publication or EPSM
+preflight gaps. Local national ingestion remains disabled and its partial database
+remains cleared.

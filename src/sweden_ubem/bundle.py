@@ -63,7 +63,7 @@ def verify_bundle(root):
     if actual != expected_paths:
         raise ValueError("Bundle file closure differs from inventory")
     heights = json.loads((root / "manifests/height-assets.json").read_text())
-    if heights["measurement_units"] != 63842 or len(heights["assets"]) != 63842:
+    if heights["measurement_units"] < 1 or len(heights["assets"]) != heights["measurement_units"]:
         raise ValueError("Height measurement closure differs")
     identities=set()
     for item in heights["assets"]:
@@ -85,6 +85,21 @@ def verify_bundle(root):
     from .config import validate_height_staging
     catalogue = root / "prepared/heights/component-stage/handoff/component-height-catalogue.parquet"
     staging = validate_height_staging(catalogue, geometry_register=components)
+    publication = root / "prepared/heights/published"
+    promoted = False
+    if (publication / "manifest.json").exists():
+        from .config import validate_height_release
+        validate_height_release(publication)
+        metadata = json.loads((publication / "manifest.json").read_text())
+        receipt = publication / "core-preflight.json"
+        if not receipt.is_file() or sha256_file(receipt) != metadata.get("epsm_preflight", {}).get("receipt_sha256"):
+            raise ValueError("Published height preflight receipt is missing or changed")
+        proof = json.loads(receipt.read_text())
+        if not proof.get("passed") or proof.get("components") != count or proof.get("failed_components") != 0:
+            raise ValueError("Published height preflight did not reconcile")
+        if sha256_file(publication / "component-height-catalogue.parquet") != sha256_file(catalogue):
+            raise ValueError("Published and imported height catalogues differ")
+        promoted = True
     return {"verified_occurrences": len(document["files"]), "verified_physical_assets": len(checked),
             "height_measurement_units": len(heights["assets"]), "components": count, "lineage_rows": lineage,
-            "height_publication_blockers": staging["blockers"], "height_production_promotable": False}
+            "height_publication_blockers": staging["blockers"], "height_production_promotable": promoted}

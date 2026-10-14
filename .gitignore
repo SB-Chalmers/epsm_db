@@ -10,3 +10,14 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .coverage
+
+# Generated exploration and simulation results stay on the local machine.
+/results/
+/runs/
+/simulation_results/
+/docs/analysis/
+/notebooks/new_notebook.ipynb
+.env.*
+!.env.example
+/build/
+/dist/

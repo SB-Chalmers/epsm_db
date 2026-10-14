@@ -1,4 +1,4 @@
-# UBEM Evidence Database
+# epsm_db — UBEM Evidence Database
 
 Version **0.0.4**. Tested on PostgreSQL 15 and 17 / PostGIS 3.5. EPSG:3006.
 
@@ -34,6 +34,8 @@ It works independently of the replacement database on port 55433.
 Its self-contained preservation set is `output/retained/uddevalla-2026-10-12/`.
 The retained dump was restored and all 29 public projections, including full
 geometry and field mappings, matched both the baseline and the live database.
+
+A reusable [stock exploration notebook](notebooks/explore_stock.ipynb) shows catalogue cells, evidence inspection and heating plots. Configure a read-only `UBEM_DATABASE_URL` before running it. The import remains `sweden_ubem` during the planned package migration.
 
 ## Setup
 
@@ -102,6 +104,10 @@ the selection. Defaults remain primary buildings with verified existing status.
 from sweden_ubem import UBEM
 
 db = UBEM(dataset="uddevalla")
+db.archetype_matrix()  # All buildings by EPSM category and register-year era
+db.archetype_matrix(building_type="multi_family")  # One category
+db.ventilation_counts(building_type="multi_family", era="SE.01")  # Reported systems
+db.ventilation_buildings(building_type="multi_family", era="SE.01")  # Building IDs
 homes = db.buildings(purpose="Bostad")
 building = db.pick(multi_component=True)
 building.components()
@@ -109,6 +115,51 @@ building.heights()
 building.epc_certificates()
 db.completeness()
 ```
+
+`archetype_matrix()` requires the optional `epsm_data` package. It includes
+buildings without EPCs and reports missing register years in a separate column.
+`ventilation_counts()` separates reported S/F/FT/FTX from missing or unresolved
+EPC ventilation evidence; it does not count model defaults as reports.
+
+For stock exploration, keep the catalogue and building records together:
+
+```python
+stock = db.stock()  # Lazy database-backed collection with stock.catalogue
+stock.matrix()      # Counts by building type and register-year era
+cell = stock.cell(building_type="multi_family", era="SE.01", ventilation="S")
+len(cell)           # All matching buildings, with no EPC availability filter
+cell.frame()        # Common building properties as a table
+cell.component_frame()  # One row per footprint component, with its own height and roof
+cell.epc_heating()  # Reported heating and explicit exclusions
+cell.plot_heating() # EPC reported heating histogram (or per_area=True)
+cell.plot_atemp()   # Reported heated-area histogram
+for record in cell:
+    print(record.building_id, record.facts, record.components)
+    break
+```
+
+`stock` and its cells fetch records in bounded batches. A full EPSM catalogue slot
+also needs an explicit `climate_zone` and `renovation_state`; then
+`cell.archetype_slot` resolves the slot, and `cell.to_epsm(weather=...)` returns
+successful models plus a receipt for every attempted building. Weather can be a
+reference, a UUID-to-reference mapping, or a callable. Catalogue zone and
+renovation choices are model assumptions, not observed database classifications.
+`stock.plot_heating(building_type=..., era=..., ventilation=...)` and
+`stock.plot_atemp(...)` are convenience forms. Stock and cell objects have concise
+representations in notebooks; `sweden_ubem.stock` emits optional debug logs when
+configured through Python's standard `logging` module.
+
+`cell.frame()` includes EPC reported storeys and basement storeys, plus geometry
+matched representative, eave, and ridge heights and roof form. Height and roof
+columns are populated at building level only when the building has one footprint
+component; use `cell.component_frame()` to inspect each part of a multi-component
+building. Missing or mismatched height evidence stays missing. In
+`cell.epc_heating()`, `reported_heating_basis` distinguishes the newer EPC's
+separate `UPPV` space-heating fields from the older form's combined carrier amount
+minus `EgiVVBered` hot-water preparation. The older form's two operands are shown
+as `combined_heating_dhw_kwh` and `dhw_subtracted_kwh`; unresolved cases have an
+explicit exclusion. These are reported delivered energy amounts, not simulated
+thermal demand.
 
 Use `include_support=True` or `include_other_statuses=True` to inspect supporting
 buildings and other/unknown statuses. Each published selection pins its source

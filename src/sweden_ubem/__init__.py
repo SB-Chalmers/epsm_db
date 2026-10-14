@@ -5,6 +5,7 @@ from .version import SCHEMA_VERSION, VERSION
 from .enums import BuildingType
 from .epc_heating import EPCHeatingTarget, heating_target_from_record
 from .records import BuildingRecord, RecordCollection, Receipt
+from .stock import Stock, StockCell
 
 __all__ = [
     "Building",
@@ -16,5 +17,7 @@ __all__ = [
     "BuildingRecord",
     "RecordCollection",
     "Receipt",
+    "Stock",
+    "StockCell",
 ]
 __version__ = VERSION

@@ -97,7 +97,7 @@ def validate_height_staging(
     if exact_baseline < 0:
         raise ValueError("Height staging provenance counts exceed the catalogue row count")
     blockers.extend(str(value) for value in reconciliation.get("blockers") or [])
-    if status != "publication_blocked":
+    if status not in {"publication_blocked", "published"}:
         blockers.append(f"unexpected staging reconciliation status: {status}")
     if reconciliation.get("epsm_preflight_status") != "passed":
         blockers.append("EPSM/Core preflight has not passed")

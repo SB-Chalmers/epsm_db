@@ -81,6 +81,30 @@ class EPCHeatingTarget:
             return ()
         return tuple(range(self.period_start.year, self.period_end_exclusive.year + (self.period_end_exclusive.month > 1)))
 
+    @property
+    def reported_heating_basis(self):
+        """Source calculation for comparable measured space heating."""
+        if self.reported_period_heating_kwh is None:
+            return None
+        return (
+            "separate_UPPV_fields" if self.regime == "after_v260"
+            else "combined_carrier_minus_EgiVVBered"
+        )
+
+    @property
+    def combined_heating_dhw_kwh(self):
+        """Older EPC carrier input before subtracting hot water, when usable."""
+        if self.reported_heating_basis != "combined_carrier_minus_EgiVVBered":
+            return None
+        return self.reported_period_heating_kwh + self.dhw_subtracted_kwh
+
+    @property
+    def dhw_subtracted_kwh(self):
+        """Older EPC hot water preparation amount used in the subtraction."""
+        if self.reported_heating_basis != "combined_carrier_minus_EgiVVBered":
+            return None
+        return _number(self.raw_values, "EgiVVBered")
+
     def as_dict(self):
         return asdict(self)
 

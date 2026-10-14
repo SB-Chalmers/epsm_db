@@ -1098,9 +1098,9 @@ class Importer:
 
     def snapshots(self):
         from .context import project_scb_snapshot
+        from .snapshot_paths import snapshot_paths
 
-        keys = self.bundle.get("scb_snapshot_keys", ["scb_snapshot_uddevalla"])
-        snapshots = [self.sources.path(k) for k in keys]
+        snapshots = snapshot_paths(self.sources, self.bundle)
         explicit = os.environ.get("UBEM_SCB_SNAPSHOT")
         if explicit:
             snapshots = [Path(explicit)]
@@ -1280,6 +1280,7 @@ def source_projection_digest():
     from .scb import validate_scb_snapshot, POPULATION_FIELDS
     from .epc_reporting import read_site_events
     from .dataset import LocalSources
+    from .snapshot_paths import snapshot_paths
     from .epc_assessment import address_key, text
     import pyarrow as pa
 
@@ -1315,6 +1316,7 @@ def source_projection_digest():
                 municipality_rows,
                 normalize_designation,
                 LocalSources,
+                snapshot_paths,
             )
         }
     )
