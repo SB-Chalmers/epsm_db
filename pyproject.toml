@@ -3,8 +3,8 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sweden-ubem"
-version = "0.0.4"
+name = "epsm_db"
+version = "0.1.0"
 description = "PostGIS database for Swedish building evidence"
 requires-python = ">=3.11"
 dependencies = [
@@ -19,10 +19,12 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=8,<10"]
 notebook = ["matplotlib>=3.9,<4", "nbclient>=0.10,<1", "ipykernel>=6,<8", "jupyterlab>=4,<5"]
-epsm = ["epsm_core==0.1.0.dev0", "epsm_data==0.3.0.dev1"]
+catalogue = ["epsm_data>=0.4.0"]
+epsm = ["epsm>=0.1.0", "epsm_core>=0.2.0", "epsm_data>=0.4.0"]
 weather = ["smhi2epw"]
 
 [project.scripts]
+epsm-db = "sweden_ubem.cli:main"
 sweden-ubem = "sweden_ubem.cli:main"
 
 [tool.setuptools.packages.find]

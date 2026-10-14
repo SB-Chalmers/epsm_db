@@ -21,3 +21,6 @@ __pycache__/
 !.env.example
 /build/
 /dist/
+
+# Default platform evaluation artifacts
+/outputs/
