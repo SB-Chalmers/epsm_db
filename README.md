@@ -430,3 +430,8 @@ Move existing `weather`, `policy`, `overrides`, `preflight` and `energyplus`
 arguments to `cell.to_epsm_legacy(...)` to retain the previous BuildingSpec route.
 A complete physical readiness receipt does not prove engine execution or
 scientific accuracy.
+
+Installed wheels include the owned SQL baselines and source inventory under the
+installation prefix’s `share/epsm_db`. Source checkouts retain their existing
+`sql/` and `config/` layout. External national inputs remain separate; select
+their root explicitly with `UBEM_SOURCE_ROOT` when using an installed package.

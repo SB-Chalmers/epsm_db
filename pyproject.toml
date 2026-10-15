@@ -33,6 +33,11 @@ where = ["src"]
 [tool.setuptools.package-data]
 sweden_ubem = ["municipality_names.json"]
 
+[tool.setuptools.data-files]
+"share/epsm_db/config" = ["config/source_inventory.toml"]
+"share/epsm_db/sql/baselines/0.0.4" = ["sql/baselines/0.0.4/*.sql"]
+"share/epsm_db/sql/migrations" = ["sql/migrations/*.sql"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
