@@ -303,12 +303,17 @@ def insert(c, table: str, values: dict) -> None:
 def application_digest():
     """Pin source code and schema even when the development version is unchanged."""
     root = Path(__file__).parent
-    return content_hash(
-        {
-            str(p.relative_to(root.parent.parent)): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in sorted([*root.glob("*.py"), *MIGRATIONS.glob("*.sql")])
-        }
-    )
+    # Logical source names retain the checkout identity when wheel data lives
+    # under share/epsm_db rather than beside the installed Python package.
+    files = {
+        f"src/sweden_ubem/{p.name}": hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in sorted(root.glob("*.py"))
+    }
+    files.update({
+        f"sql/baselines/{VERSION}/{p.name}": hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in sorted(MIGRATIONS.glob("*.sql"))
+    })
+    return content_hash(files)
 
 
 @contextmanager
