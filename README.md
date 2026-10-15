@@ -1,6 +1,6 @@
 # epsm_db — UBEM Evidence Database
 
-Python package version **0.1.0**; database schema **0.0.4**. Tested on PostgreSQL 15 and 17 / PostGIS 3.5. EPSG:3006.
+Python package version **0.2.0**; database schema **0.0.4**. Tested on PostgreSQL 15 and 17 / PostGIS 3.5. EPSG:3006.
 
 Initialize shared national LM, height, property, address, EPC and available SCB
 evidence once. Process Uddevalla (`1485`), another municipality, or Sweden through
@@ -142,9 +142,14 @@ for record in cell:
 also needs an explicit `climate_zone` and `ventilation`. SE.01–SE.06 default
 to the `existing` renovation state; SE.07 covers 2022 onward and accepts no
 renovation state. Then
-`cell.archetype_slot` resolves the slot, and `cell.to_epsm(weather=...)` returns
-successful models plus a receipt for every attempted building. Weather can be a
-reference, a UUID-to-reference mapping, or a callable. Catalogue zone and
+`cell.archetype_slot` resolves the slot.
+`models, receipts = cell.to_epsm(storeys=3, storey_height_m=2.8)` authors physical
+`epsm.Building` drafts and returns a receipt for every attempted building. These
+example dimensions are caller assumptions. Missing inputs leave an inspectable
+draft; invalid inputs leave a failure receipt. Supply weather only to a later
+`building.simulate(...)` call. The previous weather/policy-based conversion is
+now `cell.to_epsm_legacy(weather=...)`; its weather can be a reference, a
+UUID-to-reference mapping, or a callable. Catalogue zone and
 renovation choices are model assumptions, not observed database classifications.
 Fully specified cells return independent record copies whose `archetype_assignments`
 retain the selected slot, category, period, state, source and catalogue content hash.
@@ -295,8 +300,10 @@ For geographically varied batches, `weather` can be a UUID-to-reference dictiona
 or a callable `weather(record)` that returns a preassigned reference, for example
 a cached file selected by municipality. Weather selection is explicit and source-pinned.
 
-`UBEM(...).building(uuid)` also supports `.record()` and `.to_epsm(weather=...)`.
-`record.to_epsm(...)` is another convenience spelling.
+`record.to_epsm(**building_options)` uses the physical authoring route.
+The older `UBEM(...).building(uuid).to_epsm(weather=...)` spelling remains a
+legacy compatibility interface; use `.record()` followed by the public
+`Building.from_record(...)` for new work.
 
 `ubem_v1` preserves footprints and uses eaves/ridges for inferred cold-attic gables.
 All components share a local metric origin during model assembly. Receipts retain
@@ -409,3 +416,55 @@ database schemas are unchanged. `record.to_dict()` preserves evidence and
 geometry without credentials; `BuildingRecord.from_dict()` reconstructs a
 disconnected record. `record.to_epsm()` delegates to `epsm.Building.from_record`.
 SE.07 covers 2022 onward and accepts no renovation-state selector.
+
+## Stock conversion migration
+
+`cell.to_epsm()` now matches `record.to_epsm()`: it returns physical Building
+objects with explicit missing inputs, without running preflight compilation or
+selecting weather. It keeps the `(buildings, receipts)` structure; identify each
+model by `identifier` and each receipt by `building_id`. Invalid records have a
+receipt without a model. Source receipts and catalogue assignments are retained
+independently, and no catalogue choice is applied automatically.
+
+Move existing `weather`, `policy`, `overrides`, `preflight` and `energyplus`
+arguments to `cell.to_epsm_legacy(...)` to retain the previous BuildingSpec route.
+A complete physical readiness receipt does not prove engine execution or
+scientific accuracy.
+
+Installed wheels include the owned SQL baselines and source inventory under the
+installation prefix’s `share/epsm_db`. Source checkouts retain their existing
+`sql/` and `config/` layout. External national inputs remain separate; select
+their root explicitly with `UBEM_SOURCE_ROOT` when using an installed package.
+
+## Operation logging
+
+Library calls use Python's standard `logging` module and install no console or
+file output. Instrumented operations accept optional keyword-only `log_context`
+with small identifier mappings; nested events carry operation and parent IDs.
+INFO describes major stages; DEBUG exposes selections, conversions and caches.
+Logging context does not change physical models or scientific cache inputs.
+
+For an application using EPSM's coordinated logging setup:
+
+```python
+from epsm import configure_logging, reset_logging
+
+configure_logging(directory="outputs/example")  # INFO stderr, DEBUG JSONL
+# Run operations here.
+configure_logging(enabled=False)  # Stop console and file logging.
+reset_logging()  # Restore the host application's settings.
+```
+
+EPSM is needed only for this combined configuration, not for ordinary library
+logging. Existing scripts can keep using `logging.basicConfig(level=logging.INFO)`.
+
+The standalone command accepts `--log-level` before its subcommand, including `OFF`. Command results remain on stdout.
+
+## Database 0.2.0 release metadata
+
+The Python distribution is 0.2.0; the database schema remains 0.0.4. This
+release does not request a live schema migration. Physical EPSM integration
+requires EPSM 0.2.0, Core 0.3.0 and Data 0.4.0 or later. Refresh editable
+installation metadata after updating checkouts. The installed wheel includes
+owned SQL and inventory files; national source datasets remain external.
+See the stock conversion migration above before updating a weather/policy caller.

@@ -8,13 +8,16 @@ from uuid import UUID
 import shapely
 from psycopg.types.json import Jsonb
 
-from .components import assemble_building_snapshot, relation_candidates, GEOMETRY_POLICY_VERSION
-from .context import derive_area_relations, CONTEXT_POLICY_VERSION
-from .database import _connect, application_digest, LAYERS
-from .epc_assessment import assess_epc, subject_addresses, address_key, POLICY_VERSION
+from sweden_ubem._logging import operation as logged_operation
+
+from .components import GEOMETRY_POLICY_VERSION, assemble_building_snapshot, relation_candidates
+from .context import CONTEXT_POLICY_VERSION, derive_area_relations
+from .database import LAYERS, _connect, application_digest
+from .epc_assessment import POLICY_VERSION, address_key, assess_epc, subject_addresses
 from .hashing import content_hash
-from .jobs import work, bulk_insert, rows, serial_worker
-from .linkage import property_match_key, POLICY_VERSION as PROPERTY_POLICY
+from .jobs import bulk_insert, rows, serial_worker, work
+from .linkage import POLICY_VERSION as PROPERTY_POLICY
+from .linkage import property_match_key
 
 
 def release(url, source, assessment_date=None, event_sources=None):
@@ -81,6 +84,7 @@ def release(url, source, assessment_date=None, event_sources=None):
         return identity
 
 
+@logged_operation("database.partition.prepare")
 def prepare_partition(url, source, processing, partition):
     signature = content_hash([source, processing, partition])
     with work(url, source, "geometry", partition, signature, processing=processing) as state:
@@ -617,6 +621,7 @@ def refresh_coverage(url, dataset):
     evaluate_scopes(url, dataset)
 
 
+@logged_operation("database.dataset.process")
 def process_dataset(url, **kwargs):
     # A selection's membership and publication must not race another scheduler.
     with _connect(url) as lock:

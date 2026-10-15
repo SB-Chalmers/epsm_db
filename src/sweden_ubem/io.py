@@ -17,6 +17,8 @@ from psycopg.rows import dict_row
 from shapely import from_wkb, from_wkt
 from shapely.geometry import Point, box, shape
 
+from sweden_ubem._logging import operation as logged_operation
+
 from .enums import BuildingType
 from .records import BuildingRecord, Receipt, RecordCollection
 
@@ -150,6 +152,7 @@ class RecordFetcher:
     def using(self, database_url=None, *, dataset=None):
         return type(self)(database_url or self.database_url, dataset or self.dataset)
 
+    @logged_operation("database.query.uuid")
     def from_uuid(self, building_id, **kwargs):
         kwargs.setdefault("include_support", True)
         kwargs.setdefault("include_other_statuses", True)
@@ -160,6 +163,7 @@ class RecordFetcher:
             **kwargs,
         )
 
+    @logged_operation("database.query.uuids")
     def from_uuids(self, building_ids, **kwargs):
         """Retrieve a bounded set of UUIDs in one read-only transaction."""
         ids = list(dict.fromkeys(str(UUID(str(value))) for value in building_ids))
@@ -175,10 +179,12 @@ class RecordFetcher:
             **kwargs,
         )
 
+    @logged_operation("database.query.all")
     def all(self, **kwargs):
         """Page through all buildings in the selected dataset."""
         return self._fetch("true", [], request={"selector": "all"}, **kwargs)
 
+    @logged_operation("database.query.point")
     def from_point(self, x, y, *, epsg=3006, **kwargs):
         if not all(math.isfinite(float(v)) for v in (x, y)):
             raise ValueError("Point coordinates must be finite")
@@ -186,12 +192,14 @@ class RecordFetcher:
             Point(float(x), float(y)), epsg=epsg, predicate="covers_point", **kwargs
         )
 
+    @logged_operation("database.query.boundary")
     def within_boundary(self, polygon, *, epsg=3006, spatial_match="intersects", **kwargs):
         geom = _geometry(polygon)
         if geom.geom_type not in {"Polygon", "MultiPolygon"}:
             raise ValueError("Boundary must be Polygon or MultiPolygon")
         return self._spatial(geom, epsg=epsg, predicate=spatial_match, **kwargs)
 
+    @logged_operation("database.query.footprint")
     def from_footprint(self, footprint, *, epsg=3006, min_overlap_fraction=0.8, **kwargs):
         threshold = _number(min_overlap_fraction, "min_overlap_fraction", positive=True)
         if threshold > 1:
@@ -203,6 +211,7 @@ class RecordFetcher:
             geom, epsg=epsg, predicate="footprint_match", fraction=threshold, **kwargs
         )
 
+    @logged_operation("database.query.radius")
     def within_radius(self, geometry=None, *, x=None, y=None, radius_m, epsg=3006, **kwargs):
         if geometry is None:
             if x is None or y is None:
@@ -216,6 +225,7 @@ class RecordFetcher:
             **kwargs,
         )
 
+    @logged_operation("database.query.nearest")
     def nearest(self, x, y, *, max_distance_m, epsg=3006, **kwargs):
         """Return distance-ordered candidates; refuse a truncated search region."""
         requested_limit = kwargs.pop("limit", 1000)
@@ -242,6 +252,7 @@ class RecordFetcher:
             )
         return RecordCollection(tuple(ordered[:requested_limit]), result.receipt)
 
+    @logged_operation("database.query.bbox")
     def from_bbox(self, minx, miny, maxx, maxy, *, epsg=3006, **kwargs):
         if minx >= maxx or miny >= maxy:
             raise ValueError("Bounding box bounds must increase")
@@ -249,6 +260,7 @@ class RecordFetcher:
             box(minx, miny, maxx, maxy), epsg=epsg, predicate="intersects", **kwargs
         )
 
+    @logged_operation("database.query.address")
     def from_address(
         self, address=None, *, street=None, number=None, locality=None, municipality=None, **kwargs
     ):
@@ -305,18 +317,22 @@ class RecordFetcher:
             [text],
         )
 
+    @logged_operation("database.query.municipality")
     def from_municipality(self, municipality, **kwargs):
         condition, params = self._municipality(municipality)
         return self._fetch(
             condition, params, request={"selector": "municipality", "value": municipality}, **kwargs
         )
 
+    @logged_operation("database.query.regso")
     def from_regso(self, code, *, reference_period=None, **kwargs):
         return self._area("regso", code, reference_period, **kwargs)
 
+    @logged_operation("database.query.deso")
     def from_deso(self, code, *, reference_period=None, **kwargs):
         return self._area("deso", code, reference_period, **kwargs)
 
+    @logged_operation("database.query.property")
     def from_property(self, designation=None, *, property_uuid=None, **kwargs):
         if (designation is None) == (property_uuid is None):
             raise ValueError("Supply designation or property_uuid")

@@ -14,7 +14,11 @@ import psycopg
 from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict
 from psycopg.types.json import Jsonb
+
+from sweden_ubem._logging import operation as logged_operation
+
 from .hashing import content_hash
+from .resources import resource_path
 from .version import VERSION
 
 SCHEMAS = (
@@ -46,8 +50,8 @@ LAYERS = (
     "epc_linkage",
     "context_linkage",
 )
-HISTORICAL_MIGRATIONS = Path(__file__).resolve().parents[2] / "sql/migrations"
-MIGRATIONS = Path(__file__).resolve().parents[2] / "sql/baselines/0.0.4"
+HISTORICAL_MIGRATIONS = resource_path("sql/migrations")
+MIGRATIONS = resource_path("sql/baselines/0.0.4")
 
 
 class DatabaseSchemaMismatch(ValueError):
@@ -60,6 +64,8 @@ def _connect(url: str):
 
 def initialize_database(url: str, migrations: Path = MIGRATIONS) -> list[str]:
     files = sorted(migrations.glob("00*.sql"))
+    if not files or not (migrations / "processing_indexes.sql").is_file():
+        raise FileNotFoundError(f"Database baseline SQL is missing from {migrations}")
     expected = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in migrations.glob("*.sql")}
     with _connect(url) as c:
         c.execute("SELECT pg_advisory_xact_lock(hashtext('ubem-schema'))")
@@ -300,12 +306,17 @@ def insert(c, table: str, values: dict) -> None:
 def application_digest():
     """Pin source code and schema even when the development version is unchanged."""
     root = Path(__file__).parent
-    return content_hash(
-        {
-            str(p.relative_to(root.parent.parent)): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in sorted([*root.glob("*.py"), *MIGRATIONS.glob("*.sql")])
-        }
-    )
+    # Logical source names retain the checkout identity when wheel data lives
+    # under share/epsm_db rather than beside the installed Python package.
+    files = {
+        f"src/sweden_ubem/{p.name}": hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in sorted(root.glob("*.py"))
+    }
+    files.update({
+        f"sql/baselines/{VERSION}/{p.name}": hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in sorted(MIGRATIONS.glob("*.sql"))
+    })
+    return content_hash(files)
 
 
 @contextmanager
@@ -364,6 +375,7 @@ def layer_run(
         raise
 
 
+@logged_operation("database.dataset.validate")
 def validate_dataset(url: str, dataset_id: str) -> dict:
     with _connect(url) as c:
         selected = c.execute(

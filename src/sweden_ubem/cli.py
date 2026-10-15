@@ -1,8 +1,12 @@
 from __future__ import annotations
+
 import argparse
 import json
 import os
 from pathlib import Path
+
+from sweden_ubem._logging import configure_cli
+
 from .database import initialize_database, rebuild_database, validate_dataset
 from .dataset import LocalSources
 from .source_inventory import load_source_inventory
@@ -10,6 +14,12 @@ from .source_inventory import load_source_inventory
 
 def build_parser():
     p = argparse.ArgumentParser(prog="sweden-ubem")
+    p.add_argument(
+        "--log-level",
+        choices=("OFF", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
+        default="INFO",
+        help="Status output on stderr",
+    )
     commands = p.add_subparsers(dest="command", required=True)
     db = commands.add_parser("db").add_subparsers(dest="action", required=True)
     db.add_parser("status").add_argument("--database-url")
@@ -100,135 +110,141 @@ def build_parser():
 
 def main(argv=None):
     a = build_parser().parse_args(argv)
-    url = getattr(a, "database_url", None) or os.environ.get("UBEM_DATABASE_URL")
-    if (
-        a.command in ("db", "export", "scope")
-        or a.command == "dataset"
-        and a.action in ("plan", "load", "process", "validate", "report-epc")
-        or a.command == "source"
-        and a.action in ("register", "inspect")
-    ):
-        if not url:
-            raise ValueError("Set UBEM_DATABASE_URL or --database-url")
-    if a.command == "db":
-        if a.action == "status":
-            from .status import database_status
+    with configure_cli(a.log_level, "sweden_ubem"):
+        url = getattr(a, "database_url", None) or os.environ.get("UBEM_DATABASE_URL")
+        if (
+            a.command in ("db", "export", "scope")
+            or a.command == "dataset"
+            and a.action in ("plan", "load", "process", "validate", "report-epc")
+            or a.command == "source"
+            and a.action in ("register", "inspect")
+        ):
+            if not url:
+                raise ValueError("Set UBEM_DATABASE_URL or --database-url")
+        if a.command == "db":
+            if a.action == "status":
+                from .status import database_status
 
-            result = database_status(url)
-            print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
-            return 0
-        result = (
-            initialize_database(url)
-            if a.action == "init"
-            else rebuild_database(
-                url,
-                expected_database=a.expected_database,
-                backup=a.backup,
-                confirmed=a.confirm_destroy,
-                pg_dump=a.pg_dump,
-                backup_container=a.backup_container,
+                result = database_status(url)
+                print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+                return 0
+            result = (
+                initialize_database(url)
+                if a.action == "init"
+                else rebuild_database(
+                    url,
+                    expected_database=a.expected_database,
+                    backup=a.backup,
+                    confirmed=a.confirm_destroy,
+                    pg_dump=a.pg_dump,
+                    backup_container=a.backup_container,
+                )
             )
-        )
-        if a.action == "init" and not a.schema_only:
-            import tomllib
-            from .ingest import initialize_sources
+            if a.action == "init" and not a.schema_only:
+                import tomllib
 
-            bundle = tomllib.loads(a.source_bundle.read_text())
-            result = initialize_sources(
-                url,
-                LocalSources(a.profile, a.source_root),
-                source=bundle.get("source_id", "national"),
-                bundle=bundle,
-                batch_rows=a.batch_rows,
-                batch_bytes=a.batch_bytes,
+                from .ingest import initialize_sources
+
+                bundle = tomllib.loads(a.source_bundle.read_text())
+                result = initialize_sources(
+                    url,
+                    LocalSources(a.profile, a.source_root),
+                    source=bundle.get("source_id", "national"),
+                    bundle=bundle,
+                    batch_rows=a.batch_rows,
+                    batch_bytes=a.batch_bytes,
+                )
+        elif a.command == "dataset":
+            if a.action == "report-epc":
+                from .epc_reporting import epc_report
+
+                result = epc_report(url, a.dataset, a.output)
+                print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+                return 0
+            from .selection import plan_dataset as database_plan
+            from .selection import process_dataset
+
+            result = (
+                database_plan(url, a.dataset, None if a.national else a.municipality, a.source)
+                if a.action == "plan"
+                else process_dataset(
+                    url,
+                    dataset=a.dataset,
+                    municipality=None if a.national else a.municipality,
+                    source=a.source,
+                    layers=a.layers,
+                    assessment_date=a.assessment_date,
+                    event_sources=a.site_event_source,
+                )
+                if a.action in ("load", "process")
+                else validate_dataset(url, a.dataset)
             )
-    elif a.command == "dataset":
-        if a.action == "report-epc":
-            from .epc_reporting import epc_report
+            if a.action == "validate" and a.compare_oracle:
+                from .comparison import compare_oracle
 
-            result = epc_report(url, a.dataset, a.output)
-            print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
-            return 0
-        from .selection import plan_dataset as database_plan, process_dataset
+                if not a.output:
+                    raise ValueError("--output is required for oracle comparison")
+                result["oracle_comparison"] = compare_oracle(
+                    url, a.dataset, a.compare_oracle, a.output
+                )
+        elif a.command == "source":
+            inventory = load_source_inventory()
+            if a.action == "inspect":
+                from .source_inspection import inspect_record
 
-        result = (
-            database_plan(url, a.dataset, None if a.national else a.municipality, a.source)
-            if a.action == "plan"
-            else process_dataset(
-                url,
-                dataset=a.dataset,
-                municipality=None if a.national else a.municipality,
-                source=a.source,
-                layers=a.layers,
-                assessment_date=a.assessment_date,
-                event_sources=a.site_event_source,
-            )
-            if a.action in ("load", "process")
-            else validate_dataset(url, a.dataset)
-        )
-        if a.action == "validate" and a.compare_oracle:
-            from .comparison import compare_oracle
-
-            if not a.output:
-                raise ValueError("--output is required for oracle comparison")
-            result["oracle_comparison"] = compare_oracle(url, a.dataset, a.compare_oracle, a.output)
-    elif a.command == "source":
-        inventory = load_source_inventory()
-        if a.action == "inspect":
-            from .source_inspection import inspect_record
-            result = inspect_record(url, a.record_id, a.source_root)
-        elif a.action == "inventory":
-            result = [
-                x.as_dict()
-                for x in inventory.resolve(
+                result = inspect_record(url, a.record_id, a.source_root)
+            elif a.action == "inventory":
+                result = [
+                    x.as_dict()
+                    for x in inventory.resolve(
+                        profile=a.profile, source_root=a.source_root, verify=a.verify
+                    )
+                ]
+            elif a.action == "validate":
+                result = inventory.validate(
                     profile=a.profile, source_root=a.source_root, verify=a.verify
                 )
-            ]
-        elif a.action == "validate":
-            result = inventory.validate(
-                profile=a.profile, source_root=a.source_root, verify=a.verify
-            )
-        elif a.action == "register":
-            from .dataset import register_files
+            elif a.action == "register":
+                from .dataset import register_files
 
-            version, files = register_files(
-                url, LocalSources(a.profile, a.source_root), a.layer, a.files
+                version, files = register_files(
+                    url, LocalSources(a.profile, a.source_root), a.layer, a.files
+                )
+                result = {"source_version": version, "files": files}
+            else:
+                from .scb import acquire_scb_snapshot
+
+                snapshot = acquire_scb_snapshot(
+                    population_grid=a.population_grid
+                    or inventory.path_for(
+                        "scb_population_grid_2025", profile=a.profile, source_root=a.source_root
+                    ),
+                    municipality=a.municipality,
+                    output_root=a.output,
+                    regso_year=a.regso_year,
+                    income_year=a.income_year,
+                )
+                # Original response metadata stays on disk; do not print HTTP cookies.
+                result = {
+                    key: snapshot[key]
+                    for key in ("snapshot_id", "path", "municipality", "ready")
+                    if key in snapshot
+                }
+        elif a.command == "scope":
+            from .scopes import evaluate_scopes
+
+            result = evaluate_scopes(
+                url, a.dataset, a.scope, json.loads(a.rules.read_text()) if a.rules else None
             )
-            result = {"source_version": version, "files": files}
         else:
-            from .scb import acquire_scb_snapshot
+            from .exports import export_dataset
 
-            snapshot = acquire_scb_snapshot(
-                population_grid=a.population_grid
-                or inventory.path_for(
-                    "scb_population_grid_2025", profile=a.profile, source_root=a.source_root
-                ),
-                municipality=a.municipality,
-                output_root=a.output,
-                regso_year=a.regso_year,
-                income_year=a.income_year,
-            )
-            # Original response metadata stays on disk; do not print HTTP cookies.
-            result = {
-                key: snapshot[key]
-                for key in ("snapshot_id", "path", "municipality", "ready")
-                if key in snapshot
-            }
-    elif a.command == "scope":
-        from .scopes import evaluate_scopes
-
-        result = evaluate_scopes(
-            url, a.dataset, a.scope, json.loads(a.rules.read_text()) if a.rules else None
-        )
-    else:
-        from .exports import export_dataset
-
-        selected = a.building_id
-        result = export_dataset(url, a.dataset, selected, format=a.format, output=a.output)
-    print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
-    if isinstance(result, dict) and (
-        result.get("valid") is False
-        or any(isinstance(x, dict) and "failed" in x for x in result.get("layers", {}).values())
-    ):
-        return 1
-    return 0
+            selected = a.building_id
+            result = export_dataset(url, a.dataset, selected, format=a.format, output=a.output)
+        print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+        if isinstance(result, dict) and (
+            result.get("valid") is False
+            or any(isinstance(x, dict) and "failed" in x for x in result.get("layers", {}).values())
+        ):
+            return 1
+        return 0

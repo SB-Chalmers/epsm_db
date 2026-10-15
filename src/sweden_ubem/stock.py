@@ -4,18 +4,20 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 
 import pandas as pd
+
+from sweden_ubem._logging import call_with_context, context_logger
+from sweden_ubem._logging import operation as logged_operation
 
 from .database import _connect
 from .epc_heating import heating_target_from_record
 from .io import fetch_records
 from .records import _display_label
 
-logger = logging.getLogger(__name__)
+logger = context_logger(__name__)
 
 
 @dataclass(eq=False)
@@ -76,6 +78,7 @@ class Stock:
             building_type=building_type, era=era, ventilation=ventilation
         ).plot_atemp(**plot_kwargs)
 
+    @logged_operation("database.stock.read", level=10)
     def iter_records(self, *, batch_size=100):
         """Stream all dataset building records in bounded UUID-ordered pages."""
         if (
@@ -180,6 +183,7 @@ class StockCell:
             index=pd.Index(labels, name="ventilation_system"),
         )
 
+    @logged_operation("database.stock.read", level=10)
     def iter_records(self, *, batch_size=100):
         """Fetch records in batches and retain fully specified catalogue assumptions.
 
@@ -211,7 +215,7 @@ class StockCell:
                 "construction_years": list(self.stock.catalogue.dimensions["eras"][self.era]),
             }
         for offset in range(0, len(ids), batch_size):
-            page = reader.from_uuids(ids[offset : offset + batch_size])
+            page = call_with_context(reader.from_uuids, ids[offset : offset + batch_size])
             if page.receipt.truncated or len(page) != len(ids[offset : offset + batch_size]):
                 raise LookupError("Stock cell changed while fetching records; rerun the selection")
             logger.debug("Hydrated %d records for %r", len(page), self)
@@ -378,8 +382,49 @@ class StockCell:
         ax.grid(axis="y", alpha=0.2)
         return ax
 
-    def to_epsm(self, *, weather, **kwargs):
-        """Assemble models with explicit weather; return models and all receipts."""
+    @logged_operation("database.stock.convert")
+    def to_epsm(self, **building_options):
+        """Author physical EPSM Buildings and return ``(buildings, receipts)``.
+
+        Pass explicit physical options accepted by ``Building.from_record``.
+        Missing inputs remain incomplete drafts, while invalid inputs yield a
+        failure receipt and no model. Every attempted record has a receipt in
+        source order. Returned Buildings retain their source IDs. Catalogue
+        assignments remain assumptions and do not apply constructions or HVAC.
+
+        Readiness concerns physical inputs, not an installed executable or an
+        accepted energy result. No weather is read and no engine is started.
+        Use ``to_epsm_legacy(weather=..., ...)`` for the previous policy adapter.
+        """
+        legacy = {"weather", "policy", "overrides", "preflight", "energyplus"} & building_options.keys()
+        if legacy:
+            raise TypeError(
+                f"{', '.join(sorted(legacy))} belongs to cell.to_epsm_legacy(...). "
+                "cell.to_epsm() accepts physical Building options; supply weather to simulate()."
+            )
+        from epsm import Building
+
+        buildings, receipts = [], []
+        for record in self.iter_records():
+            receipt = deepcopy(record.receipt)
+            receipt.building_id = record.building_id
+            try:
+                building = call_with_context(Building.from_record, record, **building_options)
+                readiness = building.readiness()
+                receipt.fields["model_readiness"] = {
+                    "model_state": "ready" if readiness.ready else "incomplete",
+                    "requirements": list(readiness.missing + readiness.unsupported),
+                }
+                receipt.ready_for_simulation = readiness.ready and not receipt.errors
+                buildings.append(building)
+            except (ValueError, TypeError) as error:
+                receipt.errors.append(f"{type(error).__name__}: {error}")
+                receipt.ready_for_simulation = False
+            receipts.append(receipt)
+        return tuple(buildings), tuple(receipts)
+
+    def to_epsm_legacy(self, *, weather, **kwargs):
+        """Use the retained weather/policy-based BuildingSpec compatibility adapter."""
         from .epsm import EPSMBuilding
 
         overrides = dict(kwargs.pop("overrides", None) or {})
