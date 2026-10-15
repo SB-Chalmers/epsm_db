@@ -1,6 +1,6 @@
 # epsm_db — UBEM Evidence Database
 
-Python package version **0.1.0**; database schema **0.0.4**. Tested on PostgreSQL 15 and 17 / PostGIS 3.5. EPSG:3006.
+Python package version **0.2.0**; database schema **0.0.4**. Tested on PostgreSQL 15 and 17 / PostGIS 3.5. EPSG:3006.
 
 Initialize shared national LM, height, property, address, EPC and available SCB
 evidence once. Process Uddevalla (`1485`), another municipality, or Sweden through
@@ -459,3 +459,12 @@ EPSM is needed only for this combined configuration, not for ordinary library
 logging. Existing scripts can keep using `logging.basicConfig(level=logging.INFO)`.
 
 The standalone command accepts `--log-level` before its subcommand, including `OFF`. Command results remain on stdout.
+
+## Database 0.2.0 release metadata
+
+The Python distribution is 0.2.0; the database schema remains 0.0.4. This
+release does not request a live schema migration. Physical EPSM integration
+requires EPSM 0.2.0, Core 0.3.0 and Data 0.4.0 or later. Refresh editable
+installation metadata after updating checkouts. The installed wheel includes
+owned SQL and inventory files; national source datasets remain external.
+See the stock conversion migration above before updating a weather/policy caller.

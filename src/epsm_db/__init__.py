@@ -4,7 +4,7 @@ No connection is opened on import. Database, Stock and BuildingRecord refer to
 the existing implementation classes, so a second stock/record schema is avoided.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = ["Database", "Stock", "StockCell", "BuildingRecord", "Receipt", "BuildingType"]
 
 

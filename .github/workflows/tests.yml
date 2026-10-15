@@ -27,35 +27,35 @@ jobs:
           repository: SB-Chalmers/epsm_data
           ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'd7b19688ae7bb73dbbc4bc12afa83a6bcc67ae48' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '909179951815332a3b8d3bf106e06aa4f7e969dd' }}
           path: .ci/epsm_data
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_core
           ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '7578fc6f3fd902cb2a46b3f7f45690f602b884ce' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '4f7f746d1158893f73e0cf601b62fe41c35f5c73' }}
           path: .ci/epsm_core
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_lca
           ssh-key: ${{ secrets.EPSM_LCA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'da0485906bec233fe1c9a9a95d5b6c66a2f74d5b' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'fb4a8b6b4da8a094d98877a08de67b78b34e426b' }}
           path: .ci/epsm_lca
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_rc
           ssh-key: ${{ secrets.EPSM_RC_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '5426f97e9d2e23be3376935a7662db97bccdf4fa' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '026d9fc93ad8c07913ecb56e20b57288b45dc318' }}
           path: .ci/epsm_rc
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm
           ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'e689530cdaaca4e99f171230a9498c60b23c6fa8' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '0a00331d7336df5d97bc82c911eb5b531c276f17' }}
           path: .ci/epsm
       - uses: actions/setup-python@v5
         with:
