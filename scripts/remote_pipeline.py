@@ -95,7 +95,8 @@ def extract_archive(archive, staging):
 
 def verify_transport(root, expected_count):
     manifest = json.loads((root/'transport-file-manifest.json').read_text())
-    if len(manifest['files']) != expected_count:
+    # The transport manifest cannot list its own hash; the archive count includes it.
+    if len(manifest['files']) + 1 != expected_count:
         raise GateFailure('Transport manifest file count changed')
     cache = {}
     for row in manifest['files']:
@@ -112,7 +113,7 @@ def verify_transport(root, expected_count):
             cache[key] = sha256(path)
         if identity(path.stat()) != key or before.st_size != row['bytes'] or cache[key] != row['sha256']:
             raise GateFailure('Transport checksum changed: ' + str(relative))
-    return dict(file_occurrences=len(manifest['files']), unique_assets=len(cache))
+    return dict(file_occurrences=len(manifest['files']) + 1, unique_assets=len(cache) + 1)
 
 
 class Pipeline:
@@ -221,13 +222,20 @@ class Pipeline:
         check_capacity(self.root,self.config['reserve_bytes']+self.config['uncompressed_bytes'])
         staging=self.root/'releases'/('.staging-'+uuid4().hex)
         extract_archive(Path(self.config['remote_archive']),staging)
-        result=verify_transport(staging,self.config['file_occurrences'])
+        # Transport archives have a single release directory at their root.
+        payload=staging/self.config['release_id']
+        if not payload.is_dir() or payload.is_symlink():
+            raise GateFailure('Transport release directory is missing or unsafe')
+        if set(staging.iterdir()) != {payload}:
+            raise GateFailure('Unexpected transport archive root entries')
+        result=verify_transport(payload,self.config['file_occurrences'])
         result.update(archive_sha256=self.config['archive_sha256'],archive_bytes=self.config['archive_bytes'],
                       timestamp=datetime.now(timezone.utc).isoformat())
-        publish(staging/'delivery-receipt.json',result)
+        publish(payload/'delivery-receipt.json',result)
         if self.release.exists():
             raise GateFailure('Release destination appeared during verification')
-        staging.rename(self.release)
+        payload.rename(self.release)
+        staging.rmdir()
         return result
 
     def administrator(self):
