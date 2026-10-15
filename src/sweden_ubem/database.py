@@ -16,6 +16,7 @@ from psycopg.conninfo import conninfo_to_dict
 from psycopg.types.json import Jsonb
 from .hashing import content_hash
 from .version import VERSION
+from .resources import resource_path
 
 SCHEMAS = (
     "catalog",
@@ -46,8 +47,8 @@ LAYERS = (
     "epc_linkage",
     "context_linkage",
 )
-HISTORICAL_MIGRATIONS = Path(__file__).resolve().parents[2] / "sql/migrations"
-MIGRATIONS = Path(__file__).resolve().parents[2] / "sql/baselines/0.0.4"
+HISTORICAL_MIGRATIONS = resource_path("sql/migrations")
+MIGRATIONS = resource_path("sql/baselines/0.0.4")
 
 
 class DatabaseSchemaMismatch(ValueError):
@@ -60,6 +61,8 @@ def _connect(url: str):
 
 def initialize_database(url: str, migrations: Path = MIGRATIONS) -> list[str]:
     files = sorted(migrations.glob("00*.sql"))
+    if not files or not (migrations / "processing_indexes.sql").is_file():
+        raise FileNotFoundError(f"Database baseline SQL is missing from {migrations}")
     expected = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in migrations.glob("*.sql")}
     with _connect(url) as c:
         c.execute("SELECT pg_advisory_xact_lock(hashtext('ubem-schema'))")

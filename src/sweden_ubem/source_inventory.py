@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .hashing import sha256_file
+from .resources import resource_path
 
 
-INVENTORY_PATH = Path(__file__).resolve().parents[2] / "config/source_inventory.toml"
-DEFAULT_SOURCE_ROOT = Path(__file__).resolve().parents[2] / "data/raw/national-2026-10-13"
+INVENTORY_PATH = resource_path("config/source_inventory.toml")
+DEFAULT_SOURCE_ROOT = resource_path("data/raw/national-2026-10-13")
 VALID_STATUSES = {
     "required",
     "candidate",
