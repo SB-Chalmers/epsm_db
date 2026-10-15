@@ -10,6 +10,7 @@ import geopandas as gpd
 import pandas as pd
 from psycopg import sql
 
+from sweden_ubem._logging import call_with_context
 from sweden_ubem._logging import operation as logged_operation
 
 from .database import _connect
@@ -130,12 +131,12 @@ class UBEM:
         Pass an EPSM category as ``building_type`` to return one row. Requires
         the optional ``epsm_data`` package.
         """
-        from epsm_data.parametric import era_for_year, load_parametric_catalogue
+        from epsm_data import Catalogue
 
         from .enums import BuildingType
         from .io import TYPE_SQL
 
-        catalogue = load_parametric_catalogue()
+        catalogue = call_with_context(Catalogue.load)
         categories = list(catalogue.dimensions["categories"])
         if building_type is not None:
             if building_type not in categories:
@@ -150,7 +151,7 @@ class UBEM:
         for row in _rows(self.database_url, query, (self.dataset_id,)):
             category = BuildingType(row["building_type"]).archetype_category
             year = row["construction_year"]
-            era = era_for_year(year) if isinstance(year, int) and year > 0 else "Missing year"
+            era = catalogue.era_for_year(year) if isinstance(year, int) and year > 0 else "Missing year"
             counts[category, era] += row["buildings"]
 
         eras = [*catalogue.dimensions["eras"], "Missing year"]
@@ -171,11 +172,11 @@ class UBEM:
         as the record adapter. Missing or ambiguous evidence is kept explicit;
         EPSM type defaults are not counted as reported ventilation.
         """
-        from epsm_data.parametric import load_parametric_catalogue
+        from epsm_data import Catalogue
 
         from .io import TYPE_SQL
 
-        dimensions = load_parametric_catalogue().dimensions
+        dimensions = call_with_context(Catalogue.load).dimensions
         if building_type not in dimensions["categories"]:
             raise ValueError(f"Unknown EPSM building type: {building_type}")
         if era not in dimensions["eras"]:

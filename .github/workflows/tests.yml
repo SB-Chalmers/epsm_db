@@ -27,35 +27,35 @@ jobs:
           repository: SB-Chalmers/epsm_data
           ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '909179951815332a3b8d3bf106e06aa4f7e969dd' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'bc8449402b9e0dbe0ea85ff76c954cf36d209f86' }}
           path: .ci/epsm_data
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_core
           ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '4f7f746d1158893f73e0cf601b62fe41c35f5c73' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '76b9c93978d26d5f27f0616b51fbb1ca19fb6801' }}
           path: .ci/epsm_core
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_lca
           ssh-key: ${{ secrets.EPSM_LCA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'fb4a8b6b4da8a094d98877a08de67b78b34e426b' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '00141d0500e717b4f18a9d69e158f0af2aae1934' }}
           path: .ci/epsm_lca
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_rc
           ssh-key: ${{ secrets.EPSM_RC_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '026d9fc93ad8c07913ecb56e20b57288b45dc318' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'd8f42ab69e61cfe580f234b20ddc47cf6d056e59' }}
           path: .ci/epsm_rc
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm
           ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '0a00331d7336df5d97bc82c911eb5b531c276f17' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '2c6a3cfc55697c90905a103b6ec00fa087907d98' }}
           path: .ci/epsm
       - uses: actions/setup-python@v5
         with:
@@ -76,3 +76,18 @@ jobs:
           python -m pip check
           cd /tmp
           python -c 'from epsm_db import BuildingRecord, Stock; print(BuildingRecord, Stock)'
+          python - <<'PY'
+          from epsm_data import Catalogue
+          catalogue = Catalogue.load()
+          assert catalogue.dataset_id
+          assert catalogue.era_for_year(2022) == "SE.07"
+          assert "SE.07" in catalogue.dimensions["eras"]
+          slots = catalogue.search(category="multi_family", era="SE.07")
+          assert slots and all(slot.key.renovation_state is None for slot in slots)
+          assert catalogue.get_slot(slots[0].key).slot_id == slots[0].slot_id
+          assert isinstance(catalogue.summary(), dict)
+          configuration = catalogue.effective_configuration()
+          configuration["installed_smoke_detached"] = True
+          assert "installed_smoke_detached" not in catalogue.effective_configuration()
+          print("Installed catalogue inspection passed:", catalogue.dataset_id)
+          PY

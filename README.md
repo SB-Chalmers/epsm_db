@@ -118,6 +118,13 @@ db.completeness()
 
 `archetype_matrix()` and `stock()` require the optional `epsm_data` package (`pip install "epsm_db[catalogue]"`). It includes
 buildings without EPCs and reports missing register years in a separate column.
+Stock and exploration use `epsm_data.Catalogue`'s public inspection interface.
+`stock.catalogue.dimensions`, `get_slot()`, `search()` and `summary()` inspect
+classifications and definitions. `effective_configuration()` returns the effective
+catalogue payload used for the retained content hash; this replaces the older
+`stock.catalogue.to_dict()` call without changing that hash's meaning. See
+[catalogue inspection](docs/catalogue_inspection.md) and the
+[offline record example](examples/catalogue_record.py).
 `ventilation_counts()` separates reported S/F/FT/FTX from missing or unresolved
 EPC ventilation evidence; it does not count model defaults as reports.
 
@@ -460,7 +467,7 @@ logging. Existing scripts can keep using `logging.basicConfig(level=logging.INFO
 
 The standalone command accepts `--log-level` before its subcommand, including `OFF`. Command results remain on stdout.
 
-## Database 0.2.0 release metadata
+## Database 0.3.0 release metadata
 
 The Python distribution is 0.2.0; the database schema remains 0.0.4. This
 release does not request a live schema migration. Physical EPSM integration
