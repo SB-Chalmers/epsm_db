@@ -14,9 +14,12 @@ import psycopg
 from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict
 from psycopg.types.json import Jsonb
+
+from sweden_ubem._logging import operation as logged_operation
+
 from .hashing import content_hash
-from .version import VERSION
 from .resources import resource_path
+from .version import VERSION
 
 SCHEMAS = (
     "catalog",
@@ -372,6 +375,7 @@ def layer_run(
         raise
 
 
+@logged_operation("database.dataset.validate")
 def validate_dataset(url: str, dataset_id: str) -> dict:
     with _connect(url) as c:
         selected = c.execute(

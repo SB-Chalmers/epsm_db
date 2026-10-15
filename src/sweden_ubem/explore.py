@@ -1,12 +1,17 @@
 """Read-only, building-first exploration of a named dataset."""
 
 from __future__ import annotations
+
 import os
 from collections import Counter
 from dataclasses import dataclass
+
 import geopandas as gpd
 import pandas as pd
 from psycopg import sql
+
+from sweden_ubem._logging import operation as logged_operation
+
 from .database import _connect
 
 
@@ -339,6 +344,7 @@ class UBEM:
             .plot(column="normalized_value", legend=True)
         )
 
+    @logged_operation("database.export")
     def export(self, buildings, *, format="geopackage", output=None):
         from .exports import export_dataset
 

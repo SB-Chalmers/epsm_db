@@ -1,12 +1,12 @@
 """One-time national source import. Processing never calls this module's readers."""
 
+import inspect
 import json
 import os
-import sqlite3
 import shutil
-import inspect
-from itertools import islice
+import sqlite3
 from collections import defaultdict
+from itertools import islice
 from pathlib import Path
 from uuid import UUID
 
@@ -15,17 +15,18 @@ import pyogrio
 import shapely
 from psycopg.types.json import Jsonb
 
+from sweden_ubem._logging import operation as logged_operation
+
 from . import epc
 from .components import normalized_geometry_hash
 from .database import _connect
 from .dataset import clean, municipality_rows
 from .epc_assessment import lm_address
 from .hashing import content_hash, sha256_file
-from .jobs import bulk_insert, batches, work, serial_worker, BatchTooLarge, _worker
-from .progress import report as progress_report
+from .jobs import BatchTooLarge, _worker, batches, bulk_insert, serial_worker, work
 from .linkage import normalize_designation
-from .lm_xml import _selected_elements, parse_building_element, parse_address_element
-
+from .lm_xml import _selected_elements, parse_address_element, parse_building_element
+from .progress import report as progress_report
 
 SOURCE_LAYERS = (
     "geometry",
@@ -793,6 +794,7 @@ class Importer:
 
     def heights(self):
         from .compact import component_keys
+
         path = self.sources.path("height_staging_catalogue")
         reconcile = self.sources.path("height_staging_reconciliation")
         mapping_path = self.sources.path("height_path_mapping")
@@ -859,11 +861,11 @@ class Importer:
                                     details={"evidence_resolution": "pending" if r.get("evidence_record_path") else "not_supplied"},
                                     evidence_sha256=None, run_id=run))
             return {"raw_height.record": raw, "evidence.component_height": heights}
+
         self.write("heights", "catalogue", lambda skip: parquet_rows(path, skip), transform,
                    total_rows=pq.ParquetFile(path).metadata.num_rows)
 
         def measurement_transform(c, run, batch, asset, requested=None, collected=None):
-            from .compact import locate
             asset_key, digest, p, occurrence, logical = asset
             start = min(r["_source_position"] for r in batch)
             end = max(r["_source_position"] for r in batch)
@@ -1217,8 +1219,8 @@ class Importer:
                 self.finish(layer)
 
     def events(self, paths):
-        from .epc_reporting import read_site_events
         from .bundle import translated_reference
+        from .epc_reporting import read_site_events
 
         for path in paths:
             path = Path(path)
@@ -1253,7 +1255,10 @@ class Importer:
             self.finish("epc_site_events")
 
 
-def initialize_sources(url, sources, *, source="national", bundle=None, layers=None, batch_rows=None, batch_bytes=None):
+@logged_operation("database.source.ingest")
+def initialize_sources(
+    url, sources, *, source="national", bundle=None, layers=None, batch_rows=None, batch_bytes=None
+):
     # Serialize init attempts, including disposable register-locator staging.
     with _connect(url) as lock:
         lock.execute(
@@ -1274,15 +1279,16 @@ def field_mapping_digest(c):
 
 def source_projection_digest():
     """Pin source interpretations separately from processing/reporting and indexes."""
-    from . import hashing, lm_xml, source_inventory, compact
-    from .components import normalized_geometry_hash, normalized_geometry
-    from .context import project_scb_snapshot, _observation, _property
-    from .scb import validate_scb_snapshot, POPULATION_FIELDS
-    from .epc_reporting import read_site_events
-    from .dataset import LocalSources
-    from .snapshot_paths import snapshot_paths
-    from .epc_assessment import address_key, text
     import pyarrow as pa
+
+    from . import compact, hashing, lm_xml, source_inventory
+    from .components import normalized_geometry, normalized_geometry_hash
+    from .context import _observation, _property, project_scb_snapshot
+    from .dataset import LocalSources
+    from .epc_assessment import address_key, text
+    from .epc_reporting import read_site_events
+    from .scb import POPULATION_FIELDS, validate_scb_snapshot
+    from .snapshot_paths import snapshot_paths
 
     methods = {
         name: inspect.getsource(value)

@@ -13,14 +13,17 @@ import geopandas as gpd
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-from pyproj import CRS
 from psycopg import sql
+from pyproj import CRS
+
+from sweden_ubem._logging import operation as logged_operation
 
 from .database import _connect
 from .hashing import sha256_file
 from .version import SCHEMA_VERSION
 
 
+@logged_operation("database.export")
 def export_dataset(url, dataset, building_ids=None, *, format="geopackage", output=None):
     if format not in ("geopackage", "geoparquet", "csv"):
         raise ValueError("Unsupported export format")
