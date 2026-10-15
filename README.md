@@ -467,7 +467,7 @@ logging. Existing scripts can keep using `logging.basicConfig(level=logging.INFO
 
 The standalone command accepts `--log-level` before its subcommand, including `OFF`. Command results remain on stdout.
 
-## Database 0.2.0 release metadata
+## Database 0.3.0 release metadata
 
 The Python distribution is 0.2.0; the database schema remains 0.0.4. This
 release does not request a live schema migration. Physical EPSM integration
