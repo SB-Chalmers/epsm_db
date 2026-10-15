@@ -794,7 +794,6 @@ class Importer:
 
     def heights(self):
         from .compact import component_keys
-
         path = self.sources.path("height_staging_catalogue")
         reconcile = self.sources.path("height_staging_reconciliation")
         mapping_path = self.sources.path("height_path_mapping")
@@ -861,11 +860,11 @@ class Importer:
                                     details={"evidence_resolution": "pending" if r.get("evidence_record_path") else "not_supplied"},
                                     evidence_sha256=None, run_id=run))
             return {"raw_height.record": raw, "evidence.component_height": heights}
-
         self.write("heights", "catalogue", lambda skip: parquet_rows(path, skip), transform,
                    total_rows=pq.ParquetFile(path).metadata.num_rows)
 
         def measurement_transform(c, run, batch, asset, requested=None, collected=None):
+            from .compact import locate
             asset_key, digest, p, occurrence, logical = asset
             start = min(r["_source_position"] for r in batch)
             end = max(r["_source_position"] for r in batch)
@@ -1219,8 +1218,8 @@ class Importer:
                 self.finish(layer)
 
     def events(self, paths):
-        from .bundle import translated_reference
         from .epc_reporting import read_site_events
+        from .bundle import translated_reference
 
         for path in paths:
             path = Path(path)
