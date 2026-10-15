@@ -142,9 +142,14 @@ for record in cell:
 also needs an explicit `climate_zone` and `ventilation`. SE.01–SE.06 default
 to the `existing` renovation state; SE.07 covers 2022 onward and accepts no
 renovation state. Then
-`cell.archetype_slot` resolves the slot, and `cell.to_epsm(weather=...)` returns
-successful models plus a receipt for every attempted building. Weather can be a
-reference, a UUID-to-reference mapping, or a callable. Catalogue zone and
+`cell.archetype_slot` resolves the slot.
+`models, receipts = cell.to_epsm(storeys=3, storey_height_m=2.8)` authors physical
+`epsm.Building` drafts and returns a receipt for every attempted building. These
+example dimensions are caller assumptions. Missing inputs leave an inspectable
+draft; invalid inputs leave a failure receipt. Supply weather only to a later
+`building.simulate(...)` call. The previous weather/policy-based conversion is
+now `cell.to_epsm_legacy(weather=...)`; its weather can be a reference, a
+UUID-to-reference mapping, or a callable. Catalogue zone and
 renovation choices are model assumptions, not observed database classifications.
 Fully specified cells return independent record copies whose `archetype_assignments`
 retain the selected slot, category, period, state, source and catalogue content hash.
@@ -295,8 +300,10 @@ For geographically varied batches, `weather` can be a UUID-to-reference dictiona
 or a callable `weather(record)` that returns a preassigned reference, for example
 a cached file selected by municipality. Weather selection is explicit and source-pinned.
 
-`UBEM(...).building(uuid)` also supports `.record()` and `.to_epsm(weather=...)`.
-`record.to_epsm(...)` is another convenience spelling.
+`record.to_epsm(**building_options)` uses the physical authoring route.
+The older `UBEM(...).building(uuid).to_epsm(weather=...)` spelling remains a
+legacy compatibility interface; use `.record()` followed by the public
+`Building.from_record(...)` for new work.
 
 `ubem_v1` preserves footprints and uses eaves/ridges for inferred cold-attic gables.
 All components share a local metric origin during model assembly. Receipts retain
@@ -409,3 +416,17 @@ database schemas are unchanged. `record.to_dict()` preserves evidence and
 geometry without credentials; `BuildingRecord.from_dict()` reconstructs a
 disconnected record. `record.to_epsm()` delegates to `epsm.Building.from_record`.
 SE.07 covers 2022 onward and accepts no renovation-state selector.
+
+## Stock conversion migration
+
+`cell.to_epsm()` now matches `record.to_epsm()`: it returns physical Building
+objects with explicit missing inputs, without running preflight compilation or
+selecting weather. It keeps the `(buildings, receipts)` structure; identify each
+model by `identifier` and each receipt by `building_id`. Invalid records have a
+receipt without a model. Source receipts and catalogue assignments are retained
+independently, and no catalogue choice is applied automatically.
+
+Move existing `weather`, `policy`, `overrides`, `preflight` and `energyplus`
+arguments to `cell.to_epsm_legacy(...)` to retain the previous BuildingSpec route.
+A complete physical readiness receipt does not prove engine execution or
+scientific accuracy.
