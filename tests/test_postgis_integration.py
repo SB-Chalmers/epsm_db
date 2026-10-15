@@ -213,7 +213,7 @@ def test_checksums_permissions_and_invalid_height_identity(test_url, tmp_path):
 
     copied = tmp_path / "migrations"
     shutil.copytree(MIGRATIONS, copied)
-    path = next(copied.glob("*.sql"))
+    path = copied / "001_compact.sql"
     path.write_text(path.read_text() + "\n-- changed\n")
     with pytest.raises(DatabaseSchemaMismatch):
         initialize_database(test_url, copied)
