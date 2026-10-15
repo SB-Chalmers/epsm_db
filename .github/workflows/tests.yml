@@ -34,7 +34,7 @@ jobs:
           repository: SB-Chalmers/epsm_core
           ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'ba00ae1230e3ef8db4c4e8041624b69485bfd5c8' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '334f398325fa63a0a75267408f004a2658066bcc' }}
           path: .ci/epsm_core
       - uses: actions/checkout@v4
         with:
