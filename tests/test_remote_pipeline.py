@@ -36,10 +36,10 @@ def test_delivery_checksum_and_count_are_required(tmp_path):
     asset=tmp_path/'asset';asset.write_bytes(b'original')
     manifest=tmp_path/'transport-file-manifest.json'
     manifest.write_text(json.dumps({'files':[dict(path='asset',bytes=8,sha256=sha256(asset))]}))
-    assert verify_transport(tmp_path,1)['file_occurrences']==1
-    with pytest.raises(GateFailure):verify_transport(tmp_path,2)
-    asset.write_bytes(b'changed!')
+    assert verify_transport(tmp_path,2)['file_occurrences']==2
     with pytest.raises(GateFailure):verify_transport(tmp_path,1)
+    asset.write_bytes(b'changed!')
+    with pytest.raises(GateFailure):verify_transport(tmp_path,2)
 
 
 def test_gate_failure_has_no_pass_receipt_and_config_change_cannot_resume(tmp_path):
@@ -77,3 +77,25 @@ def test_enrichment_does_not_modify_hardlinked_original(tmp_path):
     assert (working/'prepared/heights/catalogue').read_bytes()==b'new'
     rows=json.loads((working/'manifests/file-inventory.json').read_text())['files']
     assert any(r['original']=='/upstream/catalogue' and 'history' in r['path'] for r in rows)
+
+
+def test_delivery_verifies_nested_transport_before_publishing(tmp_path, monkeypatch):
+    import scripts.remote_pipeline as module
+    config = dict(root=str(tmp_path), release_id='test-release', reserve_bytes=1,
+                  uncompressed_bytes=8, remote_archive=str(tmp_path/'archive'),
+                  archive_sha256='verified-archive', archive_bytes=10, file_occurrences=2)
+    pipeline = Pipeline(config)
+    (tmp_path/'releases').mkdir()
+    def extracted(archive, staging):
+        payload = staging/'test-release'
+        payload.mkdir(parents=True)
+        (payload/'asset').write_bytes(b'original')
+        (payload/'transport-file-manifest.json').write_text(json.dumps({'files': [
+            dict(path='asset', bytes=8, sha256=sha256(payload/'asset'))]}))
+    monkeypatch.setattr(module, 'extract_archive', extracted)
+    receipt = pipeline.delivery()
+    assert receipt['file_occurrences'] == 2
+    assert (pipeline.release/'asset').read_bytes() == b'original'
+    assert (pipeline.release/'delivery-receipt.json').is_file()
+    assert not list((tmp_path/'releases').glob('.staging-*'))
+    assert pipeline.delivery() == receipt

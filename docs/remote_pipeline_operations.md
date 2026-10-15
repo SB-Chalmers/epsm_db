@@ -27,13 +27,16 @@ Local progress and logs are in `output/remote-execution/upload-status.json` and
 launchctl kickstart gui/$(id -u)/se.ubem.national-upload-20261013
 ```
 
-The checksummed execution kit `kit-v2` is delivered; `kit-v1` remains retained.
+The checksummed execution kit `kit-v4` is delivered; earlier kits remain retained.
 The new kit uses distinct temporary files for concurrent status updates, fixing
 a race between the heartbeat and delivery wait loop. The archive, application
 and database configuration fingerprints are unchanged. `ubem-remote.service` waits
 for the archive's ready marker, verifies its size and SHA-256, checks Zstandard
 integrity, extracts into a new staging directory, and verifies all 109,742 file
-occurrences before publishing the release directory. Conflicts stop progression.
+occurrences before publishing the release directory. The archive wraps the
+payload in `national-execution-2026-10-13/`. Its manifest lists 109,741 files;
+the total of 109,742 includes the manifest itself. Kit v3 corrects the extraction
+root and counting contract. Conflicts stop progression.
 
 ## One administrator setup
 
@@ -82,7 +85,7 @@ into an owned disposable database. Energy simulations are outside this run.
 ## Status, pause and recovery
 
 ```sh
-ssh csd-database 'python3 /home/csd-lab/ubem/control/kit-v2/remote_pipeline.py status --config /home/csd-lab/ubem/control/kit-v2/config.json'
+ssh csd-database 'python3 /home/csd-lab/ubem/control/kit-v4/remote_pipeline.py status --config /home/csd-lab/ubem/control/kit-v4/config.json'
 ssh csd-database 'systemctl --user status ubem-remote.service --no-pager'
 ssh csd-database 'journalctl --user -u ubem-remote.service -n 30 --no-pager'
 ```
@@ -93,8 +96,8 @@ gate failures exit 78 and prevent automatic restart. Check the failed stage and
 its log before resuming. Source files, accepted releases and checkpoints are kept.
 
 ```sh
-ssh csd-database 'python3 /home/csd-lab/ubem/control/kit-v2/remote_pipeline.py pause --config /home/csd-lab/ubem/control/kit-v2/config.json'
-ssh csd-database 'python3 /home/csd-lab/ubem/control/kit-v2/remote_pipeline.py resume --config /home/csd-lab/ubem/control/kit-v2/config.json'
+ssh csd-database 'python3 /home/csd-lab/ubem/control/kit-v4/remote_pipeline.py pause --config /home/csd-lab/ubem/control/kit-v4/config.json'
+ssh csd-database 'python3 /home/csd-lab/ubem/control/kit-v4/remote_pipeline.py resume --config /home/csd-lab/ubem/control/kit-v4/config.json'
 ```
 
 Resume reuses passed stage receipts and committed record positions. A changed
@@ -122,3 +125,10 @@ PostGIS checks. The two packaging failures found during verification (notebook
 fixture location and backup runtime selection) were corrected and both retested.
 The source-path, supervisor and height-contract checks passed. Actual remote import,
 Uddevalla parity and publication still require their recorded execution gates.
+
+The PostgreSQL container uses `shm_size: 2g` within its 16 GiB memory cap.
+The previous Docker default of 64 MiB caused a parallel query to fail while
+requesting another shared-memory segment. The 15 October recovery recreated
+only the project container on its existing data directory and verified
+9,464,839 component rows and 9,465,504 lineage rows before resuming.
+The runtime receipt is `shared-memory-recovery.json` in the run directory.
