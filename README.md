@@ -118,6 +118,13 @@ db.completeness()
 
 `archetype_matrix()` and `stock()` require the optional `epsm_data` package (`pip install "epsm_db[catalogue]"`). It includes
 buildings without EPCs and reports missing register years in a separate column.
+Stock and exploration use `epsm_data.Catalogue`'s public inspection interface.
+`stock.catalogue.dimensions`, `get_slot()`, `search()` and `summary()` inspect
+classifications and definitions. `effective_configuration()` returns the effective
+catalogue payload used for the retained content hash; this replaces the older
+`stock.catalogue.to_dict()` call without changing that hash's meaning. See
+[catalogue inspection](docs/catalogue_inspection.md) and the
+[offline record example](examples/catalogue_record.py).
 `ventilation_counts()` separates reported S/F/FT/FTX from missing or unresolved
 EPC ventilation evidence; it does not count model defaults as reports.
 
