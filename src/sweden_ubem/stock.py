@@ -378,8 +378,48 @@ class StockCell:
         ax.grid(axis="y", alpha=0.2)
         return ax
 
-    def to_epsm(self, *, weather, **kwargs):
-        """Assemble models with explicit weather; return models and all receipts."""
+    def to_epsm(self, **building_options):
+        """Author physical EPSM Buildings and return ``(buildings, receipts)``.
+
+        Pass explicit physical options accepted by ``Building.from_record``.
+        Missing inputs remain incomplete drafts, while invalid inputs yield a
+        failure receipt and no model. Every attempted record has a receipt in
+        source order. Returned Buildings retain their source IDs. Catalogue
+        assignments remain assumptions and do not apply constructions or HVAC.
+
+        Readiness concerns physical inputs, not an installed executable or an
+        accepted energy result. No weather is read and no engine is started.
+        Use ``to_epsm_legacy(weather=..., ...)`` for the previous policy adapter.
+        """
+        legacy = {"weather", "policy", "overrides", "preflight", "energyplus"} & building_options.keys()
+        if legacy:
+            raise TypeError(
+                f"{', '.join(sorted(legacy))} belongs to cell.to_epsm_legacy(...). "
+                "cell.to_epsm() accepts physical Building options; supply weather to simulate()."
+            )
+        from epsm import Building
+
+        buildings, receipts = [], []
+        for record in self.iter_records():
+            receipt = deepcopy(record.receipt)
+            receipt.building_id = record.building_id
+            try:
+                building = Building.from_record(record, **building_options)
+                readiness = building.readiness()
+                receipt.fields["model_readiness"] = {
+                    "model_state": "ready" if readiness.ready else "incomplete",
+                    "requirements": list(readiness.missing + readiness.unsupported),
+                }
+                receipt.ready_for_simulation = readiness.ready and not receipt.errors
+                buildings.append(building)
+            except (ValueError, TypeError) as error:
+                receipt.errors.append(f"{type(error).__name__}: {error}")
+                receipt.ready_for_simulation = False
+            receipts.append(receipt)
+        return tuple(buildings), tuple(receipts)
+
+    def to_epsm_legacy(self, *, weather, **kwargs):
+        """Use the retained weather/policy-based BuildingSpec compatibility adapter."""
         from .epsm import EPSMBuilding
 
         overrides = dict(kwargs.pop("overrides", None) or {})
