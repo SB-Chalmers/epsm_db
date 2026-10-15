@@ -27,14 +27,14 @@ jobs:
           repository: SB-Chalmers/epsm_data
           ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '6d7b24dcde23353a684f58c875309f129bb9ad06' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'bc8449402b9e0dbe0ea85ff76c954cf36d209f86' }}
           path: .ci/epsm_data
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_core
           ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '334f398325fa63a0a75267408f004a2658066bcc' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'de1b81a8d9636a4d383559374e51ab89ae8d21f3' }}
           path: .ci/epsm_core
       - uses: actions/checkout@v4
         with:
