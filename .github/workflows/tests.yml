@@ -4,6 +4,11 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   synthetic:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.13']
+        dependencies: ['pinned', 'dev']
     services:
       postgis:
         image: postgis/postgis:17-3.5@sha256:8dfee83d8bd4c2873dc4a233c13ba2799a44f2edb16a0552d58715917fac32ba
@@ -22,40 +27,43 @@ jobs:
           repository: SB-Chalmers/epsm_data
           ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ae102d33eda79fd429fb445ec99b32dabcab8024
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'd7b19688ae7bb73dbbc4bc12afa83a6bcc67ae48' }}
           path: .ci/epsm_data
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_core
           ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
           persist-credentials: false
-          ref: 8a7c5abf9228e7e6c3792f1f34490aaffd1f608f
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '7578fc6f3fd902cb2a46b3f7f45690f602b884ce' }}
           path: .ci/epsm_core
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_lca
           ssh-key: ${{ secrets.EPSM_LCA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: f2e646713d20f0480bb245e344f86d45292efcdd
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'da0485906bec233fe1c9a9a95d5b6c66a2f74d5b' }}
           path: .ci/epsm_lca
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_rc
           ssh-key: ${{ secrets.EPSM_RC_DEPLOY_KEY }}
           persist-credentials: false
-          ref: bc65cb2b5ab866ad9909a39b4b7a412beadf84e5
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '5426f97e9d2e23be3376935a7662db97bccdf4fa' }}
           path: .ci/epsm_rc
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm
           ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ec32c61acc77915322bb0a82adf8421bbc3b3def
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'e689530cdaaca4e99f171230a9498c60b23c6fa8' }}
           path: .ci/epsm
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - run: python -m pip install build -e .ci/epsm_data -e .ci/epsm_core -e .ci/epsm_lca -e .ci/epsm_rc -e .ci/epsm -e '.[test,notebook,epsm,catalogue]'
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install build .ci/epsm_data .ci/epsm_core .ci/epsm_lca .ci/epsm_rc .ci/epsm '.[test,notebook,epsm,catalogue]'
+      - name: Require installed public collaborators
+        run: |
+          python -c 'import epsm, epsm_core, epsm_data, epsm_lca, epsm_rc, epsm_db; from pathlib import Path; assert all("site-packages" in Path(m.__file__).parts for m in (epsm, epsm_core, epsm_data, epsm_lca, epsm_rc, epsm_db))'
       - name: Test fresh schema, loaders, notebook and backup/restore
         env:
           UBEM_TEST_ADMIN_URL: postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/postgres
