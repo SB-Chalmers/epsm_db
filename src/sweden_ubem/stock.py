@@ -29,9 +29,9 @@ class Stock:
     _count: int | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self):
-        from epsm_data.parametric import load_parametric_catalogue
+        from epsm_data import Catalogue
 
-        self.catalogue = load_parametric_catalogue()
+        self.catalogue = call_with_context(Catalogue.load)
 
     def __repr__(self):
         count = "lazy" if self._count is None else str(self._count)
@@ -151,7 +151,7 @@ class StockCell:
         """Resolved catalogue slot when zone and ventilation are specified."""
         if self.climate_zone is None or self.ventilation is None:
             raise ValueError("Specify climate_zone and ventilation for a full archetype slot")
-        from epsm_data.parametric import ArchetypeKey
+        from epsm_data import ArchetypeKey
 
         return self.stock.catalogue.get_slot(ArchetypeKey(
             self.building_type, self.era, self.climate_zone,
@@ -203,7 +203,7 @@ class StockCell:
         if self.climate_zone is not None and self.ventilation is not None:
             slot = self.archetype_slot
             catalogue_json = json.dumps(
-                self.stock.catalogue.to_dict(), sort_keys=True, separators=(",", ":")
+                self.stock.catalogue.effective_configuration(), sort_keys=True, separators=(",", ":")
             )
             assignment = {
                 "kind": "assumption",
