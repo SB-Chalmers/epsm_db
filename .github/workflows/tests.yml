@@ -61,6 +61,9 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m pip install build .ci/epsm_data .ci/epsm_core .ci/epsm_lca .ci/epsm_rc .ci/epsm '.[test,notebook,epsm,catalogue]'
+      - name: Require installed public collaborators
+        run: |
+          python -c 'import epsm, epsm_core, epsm_data, epsm_lca, epsm_rc, epsm_db; from pathlib import Path; assert all("site-packages" in Path(m.__file__).parts for m in (epsm, epsm_core, epsm_data, epsm_lca, epsm_rc, epsm_db))'
       - name: Test fresh schema, loaders, notebook and backup/restore
         env:
           UBEM_TEST_ADMIN_URL: postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/postgres
