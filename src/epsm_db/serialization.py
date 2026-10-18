@@ -54,8 +54,8 @@ def record_to_dict(record):
 
 
 def record_from_dict(value):
-    from sweden_ubem.enums import BuildingType
-    from sweden_ubem.records import BuildingRecord, Receipt
+    from .enums import BuildingType
+    from .records import BuildingRecord, Receipt
 
     if value.get("format") != "epsm-record-1" or value.get("crs") != "EPSG:3006":
         raise ValueError("Expected EPSM record format 1 in EPSG:3006")
@@ -77,6 +77,8 @@ def record_from_dict(value):
         "epc_results",
         "quality_findings",
         "archetype_assignments",
+        "areas",
+        "property_parts",
     ):
         if key in data:
             data[key] = tuple(data[key])

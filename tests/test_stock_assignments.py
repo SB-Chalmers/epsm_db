@@ -6,7 +6,8 @@ import pandas as pd
 import pytest
 from shapely.geometry import box
 
-from epsm_db import BuildingRecord, BuildingType, Stock
+from epsm_db import BuildingRecord, BuildingType
+from sweden_ubem.stock import Stock
 from sweden_ubem import stock as stock_module
 from sweden_ubem.records import Receipt, RecordCollection
 

@@ -1,0 +1,48 @@
+# Latest published year per table, all categories, current DeSO/RegSO editions.
+# Downloads are immutable snapshots. Use a new output directory for an update.
+scb_snapshot_version = 1
+api_base = "https://statistikdatabasen.scb.se/api/v2"
+administrative_boundary_version = "source-260225"
+max_cells = 100000
+
+# Uses the DeSO/RegSO and administrative polygons already in the lake.
+
+[[tables]]
+name = "population"
+id = "TAB6574"
+
+[[tables]]
+name = "households"
+id = "TAB6568"
+
+[[tables]]
+name = "housing_tenure"
+id = "TAB6638"
+
+[[tables]]
+name = "income"
+id = "TAB6679"
+
+[[tables]]
+name = "employment"
+id = "TAB6680"
+
+[[tables]]
+name = "education"
+id = "TAB6534"
+
+[[tables]]
+name = "cars"
+id = "TAB6589"
+
+[[tables]]
+name = "energy_use"
+id = "TAB3654"
+
+[[tables]]
+name = "heat_production"
+id = "TAB3452"
+
+[[tables]]
+name = "electricity_production"
+id = "TAB3451"

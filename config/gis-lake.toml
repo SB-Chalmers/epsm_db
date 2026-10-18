@@ -1,0 +1,58 @@
+# A snapshot uses immutable source files. Change root or use --source-root.
+schema_version = 1
+root = "../data/raw/national-2026-10-13"
+srid = 3006
+
+# Existing prepared components can be imported as-is. Their upstream component_id
+# is an opaque source reference, including any old hash suffix. We never rehash it.
+# For direct LM GPKG ingestion instead, see docs/gis_first_lake.md.
+[[sources]]
+name = "lm-components"
+version = "national-2026-10-13"
+kind = "components"
+path = "prepared/components/components/*.parquet"
+
+[[sources]]
+name = "lm-building-register"
+version = "national-2026-10-13"
+kind = "buildings"
+path = "lantmateriet/buildings/xml/*.xml"
+
+[[sources]]
+name = "lm-addresses"
+version = "national-2026-10-13"
+kind = "addresses"
+path = "lantmateriet/addresses/xml/*.xml"
+
+[[sources]]
+name = "lm-properties"
+version = "national-2026-10-13"
+kind = "properties"
+path = "lantmateriet/properties/fastighet_riks.gpkg"
+layer = "registerenhetsomradesyta"
+
+[[sources]]
+name = "component-heights"
+version = "national-2026-10-13"
+kind = "heights"
+path = "prepared/heights/component-stage/handoff/component-height-catalogue.parquet"
+
+[[sources]]
+name = "boverket-before"
+version = "national-2026-10-13"
+kind = "epc"
+path = "boverket/epc/fore_v260/data/*.txt"
+regime = "fore_v260"
+
+[sources.columns]
+energy_class = "EgiEnergiklass"
+
+[[sources]]
+name = "boverket-after"
+version = "national-2026-10-13"
+kind = "epc"
+path = "boverket/epc/efter_v260/data/*.txt"
+regime = "efter_v260"
+
+[sources.columns]
+energy_class = "EgiEnergiklass"
