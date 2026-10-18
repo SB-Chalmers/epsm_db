@@ -55,7 +55,7 @@ jobs:
           repository: SB-Chalmers/epsm
           ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '2c6a3cfc55697c90905a103b6ec00fa087907d98' }}
+          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '5c81c88168cf3e1d70756c3ed6f1c534bfc0592e' }}
           path: .ci/epsm
       - uses: actions/setup-python@v5
         with:
