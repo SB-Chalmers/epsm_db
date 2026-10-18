@@ -83,6 +83,10 @@ cell.extract("selected-buildings.gpkg")  # Complete selection
 See [the stock API and EPSM model diagram](docs/stock_api.md) for current Data/Core
 integration, receipts, portable records, geographic filters and complete extracts.
 
+Catalogue inspection uses Data 0.6.0+ public `Catalogue` methods. See
+[catalogue inspection](docs/catalogue_inspection.md) and the
+[offline record example](examples/catalogue_record.py).
+
 ## Existing databases
 
 `Database`, `Stock` and `BuildingRecord` now target GIS lake schema version 2.

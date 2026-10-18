@@ -43,6 +43,15 @@ run for this branch.
 
 See [the lake guide](docs/gis_first_lake.md) for model, commands and limitations.
 
+# Release 0.3.0 — 15 October 2026
+
+Stock and exploration catalogue inspection use the public Data Catalogue APIs, retaining classifications, incomplete drafts and source evidence. Physical Building assembly stays in EPSM.
+
+The catalogue extra requires Data 0.6.0 or later; the EPSM extra requires Core 0.4.0 and Data 0.6.0 while retaining the compatible EPSM 0.2.0 minimum. See [the catalogue consumer guide](docs/catalogue_inspection.md).
+
+This package version does not change the physical schema baseline, evidence contract or dataset release identity. No live database migration, deployment change or national ingestion is part of the release.
+
+
 # Release 0.2.0 — 15 October 2026
 
 Record retrieval, stock conversion, ingestion, processing, validation, exports and throttled progress. The sweden_ubem logger remains supported; database schema stays 0.0.4.
