@@ -402,7 +402,13 @@ it is not an AMY target. Both retain raw fields, mapping status and exclusions.
 The reproducible Uddevalla panel runner is
 [`scripts/compare_uddevalla_epc_amy.py`](scripts/compare_uddevalla_epc_amy.py);
 it records the common AMY reference point and each building's distance to it.
-`building.widget()`/`building.view()` expose Core geometry inspection.
+`building.scene()` exports Core's pure polygon data using the versioned
+`epsm.scene/1` format; it does not start an engine or a display server. Inspect
+geometry readiness first with `building.readiness("geometry").require()`.
+For optional display, install the standalone `epsm_viewer` wheel and pass the
+scene to its `view_scene(scene)` context manager, `write_scene(scene, directory)`
+bundle writer, or `scene_widget(scene)` with the `notebook` extra. Core itself
+has no Viewer dependency.
 
 The runnable [example](examples/postgres_to_epsm.py) retrieves, compiles and writes
 one model; add `--simulate` to run EnergyPlus:
