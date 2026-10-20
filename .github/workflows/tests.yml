@@ -1,14 +1,60 @@
 name: Evidence database tests
-on: [push, pull_request, workflow_dispatch]
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      development_dependencies:
+        description: Check current dependency main branches on Python 3.13
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  synthetic:
+  combination:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: SB-Chalmers/epsm
+          ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
+          persist-credentials: false
+          ref: main
+          path: .ci/platform
+          sparse-checkout: |
+            /compatibility.json
+            /scripts/compatibility_matrix.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - id: matrix
+        env:
+          MATRIX_MODE: ${{ inputs.development_dependencies && 'main' || 'pinned' }}
+        run: |
+          python .ci/platform/scripts/compatibility_matrix.py \
+            --manifest .ci/platform/compatibility.json --consumer epsm_db \
+            --packages epsm_data epsm_core epsm_lca epsm_rc epsm \
+            --manifest-revision "$(git -C .ci/platform rev-parse HEAD)" \
+            --mode "$MATRIX_MODE" >> "$GITHUB_OUTPUT"
+  synthetic:
+    needs: combination
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix:
-        python: ['3.11', '3.13']
-        dependencies: ['pinned', 'dev']
+      matrix: ${{ fromJSON(needs.combination.outputs.matrix) }}
     services:
       postgis:
         image: postgis/postgis:17-3.5@sha256:8dfee83d8bd4c2873dc4a233c13ba2799a44f2edb16a0552d58715917fac32ba
@@ -27,35 +73,35 @@ jobs:
           repository: SB-Chalmers/epsm_data
           ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'bc8449402b9e0dbe0ea85ff76c954cf36d209f86' }}
+          ref: ${{ matrix.epsm_data }}
           path: .ci/epsm_data
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_core
           ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '76b9c93978d26d5f27f0616b51fbb1ca19fb6801' }}
+          ref: ${{ matrix.epsm_core }}
           path: .ci/epsm_core
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_lca
           ssh-key: ${{ secrets.EPSM_LCA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '00141d0500e717b4f18a9d69e158f0af2aae1934' }}
+          ref: ${{ matrix.epsm_lca }}
           path: .ci/epsm_lca
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_rc
           ssh-key: ${{ secrets.EPSM_RC_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || 'd8f42ab69e61cfe580f234b20ddc47cf6d056e59' }}
+          ref: ${{ matrix.epsm_rc }}
           path: .ci/epsm_rc
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm
           ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ${{ matrix.dependencies == 'dev' && 'dev' || '2c6a3cfc55697c90905a103b6ec00fa087907d98' }}
+          ref: ${{ matrix.epsm }}
           path: .ci/epsm
       - uses: actions/setup-python@v5
         with:
