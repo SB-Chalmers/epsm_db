@@ -49,6 +49,7 @@ jobs:
             --manifest-revision "$(git -C .ci/platform rev-parse HEAD)" \
             --mode "$MATRIX_MODE" >> "$GITHUB_OUTPUT"
   synthetic:
+    name: synthetic (${{ matrix.python }}, ${{ matrix.mode }})
     needs: combination
     runs-on: ubuntu-latest
     timeout-minutes: 30
