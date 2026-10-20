@@ -43,6 +43,7 @@ jobs:
         env:
           MATRIX_MODE: ${{ inputs.development_dependencies && 'main' || 'pinned' }}
         run: |
+          echo "EPSM manifest: $(git -C .ci/platform rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
           python .ci/platform/scripts/compatibility_matrix.py \
             --manifest .ci/platform/compatibility.json --consumer epsm_db \
             --packages epsm_data epsm_core epsm_lca epsm_rc epsm \
