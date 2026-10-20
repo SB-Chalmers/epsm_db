@@ -42,7 +42,7 @@ The wheel smoke check runs outside the checkout and exercises the installed
 Catalogue's year classification, dimensions, slot search/lookup, summary and
 detached effective configuration. The pinned CI lane must select the exact
 coordinated Data/Core/EPSM revisions that provide those APIs. The optional
-`catalogue` and `epsm` extras require `epsm_data>=0.5.0`; development features also
+`catalogue` and `epsm` extras require `epsm_data>=0.6.0`; development features also
 need those exact commit pins because the version alone does not identify them.
 This change creates no new package release and leaves the separate release
 process in place.

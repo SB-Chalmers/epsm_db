@@ -1,6 +1,6 @@
 # epsm_db — UBEM Evidence Database
 
-Python package version **0.2.0**; database schema **0.0.4**. Tested on PostgreSQL 15 and 17 / PostGIS 3.5. EPSG:3006.
+Python package version **0.3.0**; database schema **0.0.4**. Tested on PostgreSQL 15 and 17 / PostGIS 3.5. EPSG:3006.
 
 Initialize shared national LM, height, property, address, EPC and available SCB
 evidence once. Process Uddevalla (`1485`), another municipality, or Sweden through
@@ -36,6 +36,22 @@ The retained dump was restored and all 29 public projections, including full
 geometry and field mappings, matched both the baseline and the live database.
 
 A reusable [stock exploration notebook](notebooks/explore_stock.ipynb) shows catalogue cells, evidence inspection and heating plots. Configure a read-only `UBEM_DATABASE_URL` before running it. New code imports `Database`, `Stock` and `BuildingRecord` from `epsm_db`. Existing `sweden_ubem` imports and commands remain available for compatibility.
+
+## Studio evidence access
+
+Studio uses the read-only record queries below to select buildings by map area
+or identity. Records retain footprints, component identities, stored height/roof
+evidence, observations and retrieval receipts. `BuildingRecord.to_dict()` and
+`BuildingRecord.from_dict()` provide portable evidence without a database URL or
+credentials. Heights already stored in the selected dataset are consumed as
+evidence; missing or unresolved values remain explicit.
+
+Studio owns its application adapter from these records to authored Buildings.
+The database query does not choose model assumptions or recompute heights.
+The backing provider for future deployments is unconfirmed. GIS Lake has not
+been selected or integrated, and no provider implementation is included here.
+Portable records and synthetic fixtures remain the integration boundary while
+that deployment choice is unresolved.
 
 ## Setup
 
@@ -80,7 +96,8 @@ Moving the bundle requires changing only that root; there is no neighboring-proj
 The bundle pins imported SCB snapshots and optional site-event JSON documents.
 Acquire additional snapshots separately before initialization. Current RegSO/income
 coverage is Uddevalla; national population coverage does not imply national income
-coverage. Height evidence remains unpublished, with unresolved source coverage.
+coverage. Height evidence for this national rebuild remains unpublished, with
+unresolved source coverage; inspect the selected dataset's coverage receipts.
 Verify storage capacity on the PostgreSQL volume and its host before national import.
 For the native cluster, set `UBEM_CAPACITY_GUARD_PATH` to the filesystem holding
 its data directory. For Docker, use the filesystem holding its disk image.
@@ -469,9 +486,9 @@ The standalone command accepts `--log-level` before its subcommand, including `O
 
 ## Database 0.3.0 release metadata
 
-The Python distribution is 0.2.0; the database schema remains 0.0.4. This
+The Python distribution is 0.3.0; the database schema remains 0.0.4. This
 release does not request a live schema migration. Physical EPSM integration
-requires EPSM 0.2.0, Core 0.3.0 and Data 0.4.0 or later. Refresh editable
+requires EPSM 0.2.0, Core 0.4.0 and Data 0.6.0 or later. Refresh editable
 installation metadata after updating checkouts. The installed wheel includes
 owned SQL and inventory files; national source datasets remain external.
 See the stock conversion migration above before updating a weather/policy caller.
