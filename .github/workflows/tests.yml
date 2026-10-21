@@ -1,23 +1,9 @@
-name: Evidence database tests
-on:
-  pull_request:
-    branches: [dev, main]
-  push:
-    branches: [main]
-  workflow_dispatch:
-    inputs:
-      development_dependencies:
-        description: Check current dependency main branches on Python 3.13
-        type: boolean
-        default: false
-
+name: Release verification
 permissions:
   contents: read
-
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   combination:
     runs-on: ubuntu-latest
@@ -25,30 +11,30 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: SB-Chalmers/epsm
-          ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
-          persist-credentials: false
-          ref: main
-          path: .ci/platform
-          sparse-checkout: |
-            /compatibility.json
-            /scripts/compatibility_matrix.py
-          sparse-checkout-cone-mode: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - id: matrix
-        env:
-          MATRIX_MODE: ${{ inputs.development_dependencies && 'main' || 'pinned' }}
-        run: |
-          echo "EPSM manifest: $(git -C .ci/platform rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
-          python .ci/platform/scripts/compatibility_matrix.py \
-            --manifest .ci/platform/compatibility.json --consumer epsm_db \
-            --packages epsm_data epsm_core epsm_lca epsm_rc epsm \
-            --manifest-revision "$(git -C .ci/platform rev-parse HEAD)" \
-            --mode "$MATRIX_MODE" >> "$GITHUB_OUTPUT"
+    - uses: actions/checkout@v4
+      with:
+        repository: SB-Chalmers/epsm
+        ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
+        persist-credentials: false
+        ref: main
+        path: .ci/platform
+        sparse-checkout: |
+          /compatibility.json
+          /scripts/compatibility_matrix.py
+        sparse-checkout-cone-mode: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - id: matrix
+      env:
+        MATRIX_MODE: ${{ inputs.development_dependencies && 'main' || 'pinned' }}
+      run: |
+        echo "EPSM manifest: $(git -C .ci/platform rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+        python .ci/platform/scripts/compatibility_matrix.py \
+          --manifest .ci/platform/compatibility.json --consumer epsm_db \
+          --packages epsm_data epsm_core epsm_lca epsm_rc epsm \
+          --manifest-revision "$(git -C .ci/platform rev-parse HEAD)" \
+          --mode "$MATRIX_MODE" >> "$GITHUB_OUTPUT"
   synthetic:
     name: synthetic (${{ matrix.python }}, ${{ matrix.mode }})
     needs: combination
@@ -64,78 +50,84 @@ jobs:
           POSTGRES_USER: ubem_owner
           POSTGRES_PASSWORD: ubem-test-only
           POSTGRES_DB: postgres
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U ubem_owner -d postgres"
-          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports:
+        - 5432:5432
+        options: --health-cmd "pg_isready -U ubem_owner -d postgres" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: SB-Chalmers/epsm_data
-          ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
-          persist-credentials: false
-          ref: ${{ matrix.epsm_data }}
-          path: .ci/epsm_data
-      - uses: actions/checkout@v4
-        with:
-          repository: SB-Chalmers/epsm_core
-          ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
-          persist-credentials: false
-          ref: ${{ matrix.epsm_core }}
-          path: .ci/epsm_core
-      - uses: actions/checkout@v4
-        with:
-          repository: SB-Chalmers/epsm_lca
-          ssh-key: ${{ secrets.EPSM_LCA_DEPLOY_KEY }}
-          persist-credentials: false
-          ref: ${{ matrix.epsm_lca }}
-          path: .ci/epsm_lca
-      - uses: actions/checkout@v4
-        with:
-          repository: SB-Chalmers/epsm_rc
-          ssh-key: ${{ secrets.EPSM_RC_DEPLOY_KEY }}
-          persist-credentials: false
-          ref: ${{ matrix.epsm_rc }}
-          path: .ci/epsm_rc
-      - uses: actions/checkout@v4
-        with:
-          repository: SB-Chalmers/epsm
-          ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
-          persist-credentials: false
-          ref: ${{ matrix.epsm }}
-          path: .ci/epsm
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-      - run: python -m pip install build .ci/epsm_data .ci/epsm_core .ci/epsm_lca .ci/epsm_rc .ci/epsm '.[test,notebook,epsm,catalogue]'
-      - name: Require installed public collaborators
-        run: |
-          python -c 'import epsm, epsm_core, epsm_data, epsm_lca, epsm_rc, epsm_db; from pathlib import Path; assert all("site-packages" in Path(m.__file__).parts for m in (epsm, epsm_core, epsm_data, epsm_lca, epsm_rc, epsm_db))'
-      - name: Test fresh schema, loaders, notebook and backup/restore
-        env:
-          UBEM_TEST_ADMIN_URL: postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/postgres
-          UBEM_TEST_BACKUP_CONTAINER: ${{ job.services.postgis.id }}
-        run: python -m pytest -q
-      - name: Build and check installed wheel
-        run: |
-          python -m build --wheel
-          python -m pip install --no-deps --force-reinstall dist/epsm_db-*.whl
-          python -m pip check
-          cd /tmp
-          python -c 'from epsm_db import BuildingRecord, Stock; print(BuildingRecord, Stock)'
-          python - <<'PY'
-          from epsm_data import Catalogue
-          catalogue = Catalogue.load()
-          assert catalogue.dataset_id
-          assert catalogue.era_for_year(2022) == "SE.07"
-          assert "SE.07" in catalogue.dimensions["eras"]
-          slots = catalogue.search(category="multi_family", era="SE.07")
-          assert slots and all(slot.key.renovation_state is None for slot in slots)
-          assert catalogue.get_slot(slots[0].key).slot_id == slots[0].slot_id
-          assert isinstance(catalogue.summary(), dict)
-          configuration = catalogue.effective_configuration()
-          configuration["installed_smoke_detached"] = True
-          assert "installed_smoke_detached" not in catalogue.effective_configuration()
-          print("Installed catalogue inspection passed:", catalogue.dataset_id)
-          PY
+    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+      with:
+        repository: SB-Chalmers/epsm_data
+        ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
+        persist-credentials: false
+        ref: ${{ matrix.epsm_data }}
+        path: .ci/epsm_data
+    - uses: actions/checkout@v4
+      with:
+        repository: SB-Chalmers/epsm_core
+        ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
+        persist-credentials: false
+        ref: ${{ matrix.epsm_core }}
+        path: .ci/epsm_core
+    - uses: actions/checkout@v4
+      with:
+        repository: SB-Chalmers/epsm_lca
+        ssh-key: ${{ secrets.EPSM_LCA_DEPLOY_KEY }}
+        persist-credentials: false
+        ref: ${{ matrix.epsm_lca }}
+        path: .ci/epsm_lca
+    - uses: actions/checkout@v4
+      with:
+        repository: SB-Chalmers/epsm_rc
+        ssh-key: ${{ secrets.EPSM_RC_DEPLOY_KEY }}
+        persist-credentials: false
+        ref: ${{ matrix.epsm_rc }}
+        path: .ci/epsm_rc
+    - uses: actions/checkout@v4
+      with:
+        repository: SB-Chalmers/epsm
+        ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
+        persist-credentials: false
+        ref: ${{ matrix.epsm }}
+        path: .ci/epsm
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python }}
+    - run: python -m pip install build .ci/epsm_data .ci/epsm_core .ci/epsm_lca .ci/epsm_rc .ci/epsm '.[test,notebook,epsm,catalogue]'
+    - name: Require installed public collaborators
+      run: |
+        python -c 'import epsm, epsm_core, epsm_data, epsm_lca, epsm_rc, epsm_db; from pathlib import Path; assert all("site-packages" in Path(m.__file__).parts for m in (epsm, epsm_core, epsm_data, epsm_lca, epsm_rc, epsm_db))'
+    - name: Test fresh schema, loaders, notebook and backup/restore
+      env:
+        UBEM_TEST_ADMIN_URL: postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/postgres
+        UBEM_TEST_BACKUP_CONTAINER: ${{ job.services.postgis.id }}
+      run: python -m pytest -q
+    - name: Build and check installed wheel
+      run: |
+        python -m build --wheel
+        python -m pip install --no-deps --force-reinstall dist/epsm_db-*.whl
+        python -m pip check
+        cd /tmp
+        python -c 'from epsm_db import BuildingRecord, Stock; print(BuildingRecord, Stock)'
+        python - <<'PY'
+        from epsm_data import Catalogue
+        catalogue = Catalogue.load()
+        assert catalogue.dataset_id
+        assert catalogue.era_for_year(2022) == "SE.07"
+        assert "SE.07" in catalogue.dimensions["eras"]
+        slots = catalogue.search(category="multi_family", era="SE.07")
+        assert slots and all(slot.key.renovation_state is None for slot in slots)
+        assert catalogue.get_slot(slots[0].key).slot_id == slots[0].slot_id
+        assert isinstance(catalogue.summary(), dict)
+        configuration = catalogue.effective_configuration()
+        configuration["installed_smoke_detached"] = True
+        assert "installed_smoke_detached" not in catalogue.effective_configuration()
+        print("Installed catalogue inspection passed:", catalogue.dataset_id)
+        PY
+'on':
+  workflow_dispatch:
+    inputs:
+      development_dependencies:
+        description: Check current dependency main branches on Python 3.13
+        type: boolean
+        default: false
