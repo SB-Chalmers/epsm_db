@@ -1,4 +1,15 @@
-# epsm_db — UBEM Evidence Database
+# EPSM Database
+
+<!-- EPSM introduction: Pocket CAD -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/epsm_db-dark.png">
+  <img src="docs/assets/brand/epsm_db.png" width="64" height="64" alt="EPSM Database — building evidence store">
+</picture>
+
+Explore Swedish building evidence, trace it to its sources and pass selected records into EPSM models.
+
+[Explore the EPSM platform](https://github.com/SB-Chalmers/epsm/blob/main/docs/platform.md)
+<!-- /EPSM introduction -->
 
 Python package version **0.3.0**; database schema **0.0.4**. Tested on PostgreSQL 15 and 17 / PostGIS 3.5. EPSG:3006.
 
