@@ -135,3 +135,10 @@ This identifies the delivery implementation, not the application bundle or a
 completed national acceptance. No service was restarted for this check.
 The nested-root, manifest-count and rejection tests run offline; the deployed
 script remains frozen until an explicit operational update.
+
+## Retained container recovery setting
+
+The preserved local recovery edits configure PostgreSQL with `shm_size: 2g`
+within its 16 GiB memory cap. They record the 15 October shared-memory recovery
+in `shared-memory-recovery.json`. This source setting does not restart a service
+or change the reviewed deployed-kit identity above.
