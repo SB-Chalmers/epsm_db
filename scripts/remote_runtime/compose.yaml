@@ -5,6 +5,7 @@ services:
     container_name: ubem-national-postgis
     restart: unless-stopped
     mem_limit: 16g
+    shm_size: 2g
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: ubem_owner
