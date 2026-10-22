@@ -1,11 +1,20 @@
-# epsm_db
+# EPSM Database
+
+<!-- EPSM introduction: Pocket CAD -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/welcome/epsm_db-dark.png">
+  <img src="docs/assets/welcome/epsm_db.png" width="160" height="160" alt="EPSM Database — Three record drawers with one active record label; persisted catalogue storage.">
+</picture>
+
+Explore the evidence behind Swedish buildings. EPSM Database brings geometry,
+energy certificates and statistical context into PostgreSQL/PostGIS, with Python
+tools for querying and inspecting records. Sources, coverage and missing inputs
+stay visible when you pass selected evidence to an EPSM model.
+
+**[Explore the EPSM platform →](https://github.com/SB-Chalmers/epsm/blob/main/docs/platform.md)**
+<!-- /EPSM introduction -->
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/SB-Chalmers/epsm_db/actions/workflows/ci.yml) [![Releases](https://img.shields.io/badge/releases-GitHub-181717?logo=github&logoColor=white)](https://github.com/SB-Chalmers/epsm_db/releases) [![Issues](https://img.shields.io/badge/issues-GitHub-181717?logo=github&logoColor=white)](https://github.com/SB-Chalmers/epsm_db/issues)
-
-EPSM Database stores Swedish building evidence in PostgreSQL/PostGIS and provides
-Python queries for buildings, geometry, energy certificates and statistical context.
-Records retain source provenance and coverage so selected evidence can be inspected
-or passed to EPSM models with modelling assumptions kept explicit.
 
 ## Getting started
 
@@ -40,6 +49,29 @@ and start with the [exploration notebook](notebooks/explore_stock.ipynb).
 
 ## License
 
-See the [shared EPSM licensing guidance](https://github.com/SB-Chalmers/epsm_development/blob/main/docs/licensing.md).
-This repository has no root software license declaration. Source datasets retain
-their providers' access and redistribution terms.
+EPSM-owned software and documentation use the [MIT license](LICENSE).
+Source datasets, catalogue evidence and third-party material retain their
+providers' terms and attribution; MIT does not grant new redistribution rights
+to those sources.
+
+## People and support
+
+Developed at Chalmers University of Technology as part of the EPSM research platform.
+
+**Funding**: Swedish Energy Agency (Project ID: P2024-04053)
+
+**Partners**:
+
+- Lindholmen Science Park AB
+- Sinom AB
+- Stiftelsen Chalmers Industriteknik
+
+**Team**:
+
+- **Lead Developer**: Sanjay Somanath
+- **Principal Investigator**: Alexander Hollberg
+- **Contributors**: Yinan Yu, Dag Wästberg
+
+<p align="center">
+  <img src="docs/assets/welcome/logos.png" width="100%" alt="Chalmers University of Technology, Chalmers Industriteknik, Sinom, Lindholmen Science Park and Swedish Energy Agency logos">
+</p>
