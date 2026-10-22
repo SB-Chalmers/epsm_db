@@ -1,8 +1,10 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
+license = "MIT"
+license-files = ["LICENSE"]
 name = "epsm_db"
 version = "0.3.0"
 description = "PostGIS database for Swedish building evidence"
