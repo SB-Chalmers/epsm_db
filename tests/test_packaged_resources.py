@@ -10,7 +10,10 @@ from epsm_db.lake import database
 
 def test_source_resource_location_keeps_existing_layout():
     root = Path(__file__).resolve().parents[1]
-    assert database.resource("001_schema.sql") == root / "sql/lake/001_schema.sql"
+    resolved = database.resource("001_schema.sql")
+    # An editable install reads the checkout; an installed wheel reads its share/ copy.
+    assert resolved.name == "001_schema.sql" and resolved.parent.name == "lake"
+    assert resolved.read_bytes() == (root / "sql/lake/001_schema.sql").read_bytes()
     assert files("epsm_db").joinpath("municipality_names.json").read_text().startswith("{")
 
 
