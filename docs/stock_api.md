@@ -191,9 +191,9 @@ source reingestion. Migration and publication use the existing writer lock.
 Initialize fresh databases with `epsm-db init`; PostGIS must already be installed
 by an administrator when the database owner is not a superuser.
 
-The main Python exports now target the GIS lake. Historical SQL operations remain
-in `sweden-ubem`; this release does not migrate a legacy database or promote/delete
-any database. Roll back application code only alongside the matching schema;
+The Python exports target the GIS lake. The historical `sweden-ubem` SQL operations
+are retired and archived under `archive/2026-10-29/`; no release migrates a legacy
+database or promotes/deletes any database. Roll back application code only alongside the matching schema;
 retain the previous deployed runtime until the new publication is validated.
 
 ## Model and package responsibilities

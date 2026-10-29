@@ -75,7 +75,7 @@ so it does not ask the administrator to invent or maintain hostnames.
    ```
 
    Enter your sudo password in your own terminal. The script asks for the optional
-   device-share link, target database (default `sweden_ubem_v004_baseline`), email
+   device-share link, target database (default `epsm_lake`), email
    sender, and administrator email. For this deployment the latter two can both
    be `ssanjay@chalmers.se`, provided Chalmers SMTP accepts that sender.
 
@@ -168,7 +168,7 @@ For the current host, the connection fields are:
 |---|---|
 | Host | `csd-lab-precision-7540.tailb64966.ts.net` |
 | Port | `55433` |
-| Database | `sweden_ubem_v004_baseline` |
+| Database | `epsm_lake` |
 | Username | The registered CID |
 | Password | The user's chosen password |
 | PostgreSQL SSL mode | Disable; Tailscale encrypts the connection |

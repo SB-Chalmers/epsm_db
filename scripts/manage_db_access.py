@@ -220,7 +220,7 @@ def setup(args):
     share_expires=(previous.get('tailscale_share_expires') if same_share else
                    (datetime.now(timezone.utc)+timedelta(days=29)).isoformat() if share_url else None)
     config=dict(mode=MODE,transport='tailscale',container='ubem-national-postgis',
-                database=identifier(prompt('Database',previous.get('database','sweden_ubem_v004_baseline'))),
+                database=identifier(prompt('Database',previous.get('database','epsm_lake'))),
                 database_host=identity['dns'],database_port=55433,tailscale_dns=identity['dns'],
                 tailscale_node_id=identity['node_id'],tailscale_ips=identity['ips'],
                 activation_origin='https://'+identity['dns'],

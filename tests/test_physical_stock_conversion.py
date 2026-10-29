@@ -33,7 +33,10 @@ def test_mixed_batch_keeps_incomplete_drafts_and_invalid_receipts(monkeypatch):
     invalid = replace(
         source, building_id="invalid", geometry=Polygon([(0, 0), (10, 10), (0, 10), (10, 0)])
     )
-    monkeypatch.setattr(type(cell), "iter_records", lambda self: iter((valid, incomplete, invalid)))
+    def fetched(self, *, batch_size=100):
+        yield from (valid, incomplete, invalid)
+
+    monkeypatch.setattr(type(cell), "iter_records", fetched)
     models, receipts = cell.to_epsm(storeys=2, storey_height_m=3)
     assert [model.identifier for model in models] == ["valid", "missing"]
     assert [receipt.building_id for receipt in receipts] == ["valid", "missing", "invalid"]
@@ -44,7 +47,7 @@ def test_mixed_batch_keeps_incomplete_drafts_and_invalid_receipts(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "legacy",
+    "execution",
     [
         {"weather": "weather.epw"},
         {"policy": "ubem_v1"},
@@ -53,24 +56,7 @@ def test_mixed_batch_keeps_incomplete_drafts_and_invalid_receipts(monkeypatch):
         {"energyplus": "/engine"},
     ],
 )
-def test_legacy_arguments_have_an_actionable_migration_error(monkeypatch, legacy):
+def test_execution_arguments_belong_to_building_simulate(monkeypatch, execution):
     _, cell = make_cell(monkeypatch)
-    with pytest.raises(TypeError, match="to_epsm_legacy"):
-        cell.to_epsm(**legacy)
-
-
-def test_explicit_legacy_route_preserves_existing_options(monkeypatch):
-    _, cell = make_cell(monkeypatch)
-    from epsm.legacy_records import EPSMBuilding
-
-    captured = {}
-
-    def convert(records, **kwargs):
-        captured.update(kwargs)
-        assert len(tuple(records)) == 1
-        return ("models", "receipts")
-
-    monkeypatch.setattr(EPSMBuilding, "from_records", convert)
-    assert cell.to_epsm_legacy(weather="declared.epw") == ("models", "receipts")
-    assert captured["weather"] == "declared.epw"
-    assert captured["overrides"]["climate_zone"] == "SE.Zone3"
+    with pytest.raises(TypeError, match="Building.simulate"):
+        cell.to_epsm(**execution)

@@ -1,12 +1,14 @@
 """Lazy geographic stocks, catalogue cells and explicit physical conversion."""
 
-from collections import Counter
-from copy import deepcopy
-from functools import cached_property
-from importlib.resources import files
+import hashlib
 import json
 import math
 import warnings
+from collections import Counter
+from copy import deepcopy
+from dataclasses import replace
+from functools import cached_property
+from importlib.resources import files
 
 import geopandas as gpd
 import pandas as pd
@@ -18,6 +20,9 @@ from .errors import BoundaryUnavailableError, RecordNotFoundError
 from .records import Receipt
 
 VENTILATION = ("S", "F", "FT", "FTX", "No linked EPC", "Unresolved EPC ventilation")
+# Source types outside the authored catalogue keep their own cohort ("generic"); only
+# their catalogue fabric selection borrows the matching multifamily representative.
+GENERIC = "generic"
 BUILDING_LAYERS = ("buildings", "component_heights", "properties", "addresses", "epc_links")
 
 
@@ -101,7 +106,7 @@ class Stock:
             from epsm_data import Catalogue
         except ImportError as error:
             raise ImportError(
-                "Catalogue operations require epsm_db[catalogue] with EPSM Data 0.6.0+."
+                "Catalogue operations require epsm_db[catalogue] with EPSM Data 0.7.0+."
             ) from error
         return call_with_context(Catalogue.load)
 
@@ -190,12 +195,12 @@ class Stock:
         return Stock(self.db, _filters=filters)
 
     def cell(
-        self, *, building_type, era, ventilation=None, climate_zone=None, renovation_state=None
+        self, building_type, era, *, ventilation=None, climate_zone=None, renovation_state=None
     ):
         return StockCell(
             self,
-            building_type=building_type,
-            era=era,
+            building_type,
+            era,
             ventilation=ventilation,
             climate_zone=climate_zone,
             renovation_state=renovation_state,
@@ -205,7 +210,7 @@ class Stock:
     def matrix(self, *, building_type=None):
         catalogue = self.catalogue
         eras = dict(catalogue.dimensions["eras"])
-        categories = list(catalogue.dimensions["categories"])
+        categories = list(dict.fromkeys((*catalogue.dimensions["categories"], GENERIC)))
         if building_type is not None:
             if building_type not in categories:
                 raise ValueError("Unknown catalogue building type")
@@ -222,8 +227,8 @@ class Stock:
             for row in rows:
                 category = (
                     row["building_type"]
-                    if row["building_type"] in {"single_family", "multi_family", "school", "office"}
-                    else "generic"
+                    if row["building_type"] in catalogue.dimensions["categories"]
+                    else GENERIC
                 )
                 year = row["construction_year"]
                 era = (
@@ -494,14 +499,18 @@ class Stock:
 
 
 class StockCell(Stock):
-    """Type/era cohort with optional observed ventilation and declared catalogue state."""
+    """Type/era cohort with optional observed ventilation and declared catalogue state.
+
+    ``generic`` selects source types outside the authored catalogue; their fabric
+    assumption borrows the multifamily representative and records that donor.
+    """
 
     def __init__(
         self,
         stock,
-        *,
         building_type,
         era,
+        *,
         ventilation=None,
         climate_zone=None,
         renovation_state=None,
@@ -509,19 +518,24 @@ class StockCell(Stock):
         self.stock = stock
         self.building_type, self.era = building_type, era
         self.ventilation, self.climate_zone = ventilation, climate_zone
-        self.renovation_state = renovation_state
         catalogue = stock.catalogue
         dimensions = catalogue.dimensions
-        if building_type not in dimensions["categories"] or era not in dimensions["eras"]:
-            raise ValueError("Unknown catalogue building type or era")
+        if building_type not in (*dimensions["categories"], GENERIC):
+            raise ValueError(f"Unknown catalogue building type: {building_type}")
+        if era not in dimensions["eras"]:
+            raise ValueError(f"Unknown catalogue era: {era}")
         if ventilation is not None and ventilation not in VENTILATION:
-            raise ValueError("Unknown observed ventilation filter")
+            raise ValueError(f"Unknown observed ventilation filter: {ventilation}")
         if climate_zone is not None and climate_zone not in dimensions["zones"]:
-            raise ValueError("Unknown catalogue climate zone")
+            raise ValueError(f"Unknown catalogue climate zone: {climate_zone}")
+        if era == "SE.07":
+            if renovation_state is not None:
+                raise ValueError("SE.07 has no renovation states")
+        elif renovation_state is None:
+            renovation_state = "existing"
         if renovation_state is not None and renovation_state not in dimensions["states"]:
-            raise ValueError("Unknown catalogue renovation state")
-        if era == "SE.07" and renovation_state is not None:
-            raise ValueError("SE.07 has no renovation state")
+            raise ValueError(f"Unknown catalogue renovation state: {renovation_state}")
+        self.renovation_state = renovation_state
         filters = dict(
             stock._filters,
             building_type=building_type,
@@ -533,38 +547,76 @@ class StockCell(Stock):
         super().__init__(stock.db, _filters=filters)
         self.__dict__["catalogue"] = catalogue
 
+    def __repr__(self):
+        from .records import _display_label
+
+        return (
+            f"StockCell(type={_display_label(self.building_type, 20)}, "
+            f"era={_display_label(self.era, 12)}, "
+            f"ventilation={_display_label(self.ventilation, 8)}; lazy)"
+        )
+
     @cached_property
     def archetype(self):
         """Canonical physical definition; selecting it does not apply it to records."""
+        records = self.catalogue.archetype_records
         candidates = [
             identifier
             for identifier in self.catalogue.ids(category=self.building_type)
-            if self.catalogue.detailed.archetypes[identifier]["era"] == self.era
+            if records[identifier]["era"] == self.era
         ]
         if len(candidates) != 1:
             raise ValueError(
                 "No unique canonical archetype for this cell; supply an explicit Data Archetype"
             )
-        state = None if self.era == "SE.07" else self.renovation_state or "existing"
-        return call_with_context(self.catalogue.get, candidates[0], state=state)
+        return call_with_context(self.catalogue.get, candidates[0], state=self.renovation_state)
 
     @property
     def archetype_slot(self):
+        """Resolve the LoD2 fabric slot; the observed ventilation filter does not select it."""
         from epsm_data import ArchetypeKey
 
-        if self.climate_zone is None or self.ventilation not in ("S", "F", "FT", "FTX"):
-            raise ValueError(
-                "Specify climate_zone and a reported ventilation code for scalar slot inspection"
-            )
+        if self.climate_zone is None:
+            raise ValueError("Specify climate_zone for a full archetype slot")
         return self.catalogue.get_slot(
-            ArchetypeKey(
-                self.building_type,
-                self.era,
-                self.climate_zone,
-                None if self.era == "SE.07" else self.renovation_state or "existing",
-                self.ventilation,
-            )
+            ArchetypeKey(self.building_type, self.era, self.climate_zone, self.renovation_state)
         )
+
+    def _assignment(self):
+        """Declared catalogue assumption for a zone-complete cell; None for a partial cell."""
+        if self.climate_zone is None:
+            return None
+        slot = self.archetype_slot
+        catalogue_json = json.dumps(
+            self.catalogue.resolved_dict(), sort_keys=True, separators=(",", ":"), allow_nan=False
+        )
+        return {
+            "kind": "assumption",
+            "source": "stock_cell",
+            "catalogue_dataset": self.catalogue.dataset_id,
+            "catalogue_sha256": hashlib.sha256(catalogue_json.encode()).hexdigest(),
+            "slot_id": slot.slot_id,
+            **slot.key.to_dict(),
+            "construction_years": list(self.catalogue.dimensions["eras"][self.era]),
+            **({"selection": deepcopy(slot.selection)} if self.building_type == GENERIC else {}),
+        }
+
+    @operation("database.stock.read", level=10)
+    def iter_records(self, *, batch_size=100):
+        """Yield record copies that carry this cell's catalogue assumption when it is complete.
+
+        No source observation or original record is modified; a partial cell (no
+        climate zone) does not invent a catalogue selection.
+        """
+        assignment = self._assignment()
+        for record in super().iter_records(batch_size=batch_size):
+            if assignment is None:
+                yield record
+                continue
+            assignments = deepcopy(record.archetype_assignments)
+            if assignment not in assignments:
+                assignments += (deepcopy(assignment),)
+            yield replace(record, archetype_assignments=assignments)
 
     def _archetype(self, supplied):
         if isinstance(supplied, str):

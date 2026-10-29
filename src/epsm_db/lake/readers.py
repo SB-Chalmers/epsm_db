@@ -1,11 +1,11 @@
 """Streaming adapters for LM, Boverket and height files; no geometry digests."""
 import csv
-from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
 import gzip
 import json
 import math
 import unicodedata
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 
@@ -85,7 +85,7 @@ def rows(path, entry, skip=0):
     """Yield source ordinal, values, geometry. Skip Parquet row groups on resume."""
     adapter = entry.get('adapter', entry['kind'])
     if path.suffix == '.xml':
-        from sweden_ubem.lm_xml import _selected_elements, parse_building_element, parse_address_element
+        from ..lm_xml import _selected_elements, parse_address_element, parse_building_element
         parser, member = ((parse_building_element, 'Byggnad') if adapter == 'buildings'
                           else (parse_address_element, 'Belagenhetsadress'))
         if adapter not in ('buildings', 'addresses'):
@@ -135,7 +135,7 @@ def rows(path, entry, skip=0):
                     yield position, row, row.pop(entry.get('geometry_column', 'geometry'), None)
         return
     if path.suffix in ('.txt', '.csv'):
-        from sweden_ubem.epc import detect_encoding
+        from ..epc import detect_encoding
         encoding = entry.get('encoding') or detect_encoding(path)
         with path.open(encoding=encoding, newline='') as stream:
             reader = csv.DictReader(stream, delimiter=entry.get('delimiter', '|' if adapter == 'epc' else ','))

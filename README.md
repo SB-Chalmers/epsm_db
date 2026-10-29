@@ -1,6 +1,17 @@
-# epsm_db — GIS-first building data lake
+# EPSM Database
 
-Version **0.4.0** provides the stock Python workflow over a simpler PostgreSQL/PostGIS lake for linked property,
+<!-- EPSM introduction: Pocket CAD -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/epsm_db-dark.png">
+  <img src="docs/assets/brand/epsm_db.png" width="64" height="64" alt="EPSM Database — building evidence store">
+</picture>
+
+Explore Swedish building evidence, trace it to its sources and pass selected records into EPSM models.
+
+[Explore the EPSM platform](https://github.com/SB-Chalmers/epsm/blob/main/docs/platform.md)
+<!-- /EPSM introduction -->
+
+Version **0.5.0** provides the stock Python workflow over a PostgreSQL/PostGIS lake for linked property,
 building, component, address, EPC and height evidence, with versioned boundaries,
 SCB statistics and NVDB road data.
 
@@ -83,23 +94,30 @@ cell.extract("selected-buildings.gpkg")  # Complete selection
 See [the stock API and EPSM model diagram](docs/stock_api.md) for current Data/Core
 integration, receipts, portable records, geographic filters and complete extracts.
 
-Catalogue inspection uses Data 0.6.0+ public `Catalogue` methods. See
+Catalogue inspection uses Data 0.7.0+ public `Catalogue` methods. See
 [catalogue inspection](docs/catalogue_inspection.md) and the
 [offline record example](examples/catalogue_record.py).
 
 ## Existing databases
 
-`Database`, `Stock` and `BuildingRecord` now target GIS lake schema version 2.
+`Database`, `Stock` and `BuildingRecord` target GIS lake schema version 2.
 Existing version-1 GIS lakes use `epsm-db migrate`, then `epsm-db publish` after
 the national build finishes. This extends the lake without source reingestion.
-Legacy schema 0.0.4 databases retain their separate `sweden-ubem` command.
 
-See the [legacy workflow](docs/legacy_workflow.md),
-[existing remote user access](docs/remote_user_access.md), and
+See [remote user access](docs/remote_user_access.md) and the
 [GIS-first design and rollout status](docs/gis_first_lake.md).
 
+## Retired pipeline
+
+The earlier national ingestion pipeline (`sweden_ubem`, its `sweden-ubem` command,
+schema 0.0.4 migrations, the native PostgreSQL scripts, the remote runtime and
+their studies) was retired on 29 October 2026 when the data lake became the
+supported database. Its files are kept verbatim under `archive/2026-10-29/` with
+their original paths; they are not installed, tested or maintained. The last
+release that shipped it is [v0.3.0](https://github.com/SB-Chalmers/epsm_db/releases/tag/v0.3.0).
+
 The separate `epsm_lake` national database finished ingestion and publication on
-17 October 2026. The version-0.4.0 stock API is deployed on schema version 2.
+17 October 2026. The stock API is deployed on schema version 2.
 Registered readers can use QGIS and Python through Tailscale. National performance
 benchmarking and database promotion remain separate; the old database is retained.
 

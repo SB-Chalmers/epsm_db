@@ -1,9 +1,9 @@
 # GIS-first data lake
 
-The `codex/gis-first-data-lake` branch makes `epsm-db` a small source lake and GIS
-publication pipeline. It targets a **fresh PostgreSQL 15+ / PostGIS database**.
-The legacy modelling schema is still served by `sweden-ubem`; its running release
-is a separate deployment. This branch does not migrate it in place.
+`epsm-db` is a small source lake and GIS publication pipeline. It targets a
+**fresh PostgreSQL 15+ / PostGIS database**. The earlier modelling schema and its
+`sweden-ubem` pipeline were retired on 29 October 2026 (archived under
+`archive/2026-10-29/`); nothing migrates a legacy database in place.
 
 ## Model
 

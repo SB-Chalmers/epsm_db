@@ -97,10 +97,19 @@ jobs:
     - name: Require installed public collaborators
       run: |
         python -c 'import epsm, epsm_core, epsm_data, epsm_lca, epsm_rc, epsm_db; from pathlib import Path; assert all("site-packages" in Path(m.__file__).parts for m in (epsm, epsm_core, epsm_data, epsm_lca, epsm_rc, epsm_db))'
-    - name: Test fresh schema, loaders, notebook and backup/restore
+    - name: Create a disposable lake validation database
+      run: |
+        python - <<'PY'
+        import psycopg
+        with psycopg.connect("postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/postgres", autocommit=True) as c:
+            c.execute("CREATE DATABASE epsm_api_validation_ci")
+        with psycopg.connect("postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/epsm_api_validation_ci", autocommit=True) as c:
+            c.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+        PY
+        python -m epsm_db init --help >/dev/null
+    - name: Test the lake API, stock cells, conversion and PostGIS acceptance
       env:
-        UBEM_TEST_ADMIN_URL: postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/postgres
-        UBEM_TEST_BACKUP_CONTAINER: ${{ job.services.postgis.id }}
+        EPSM_LAKE_TEST_URL: postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/epsm_api_validation_ci
       run: python -m pytest -q
     - name: Build and check installed wheel
       run: |
@@ -108,7 +117,7 @@ jobs:
         python -m pip install --no-deps --force-reinstall dist/epsm_db-*.whl
         python -m pip check
         cd /tmp
-        python -c 'from epsm_db import BuildingRecord, Stock; print(BuildingRecord, Stock)'
+        python -c 'from epsm_db import BuildingRecord, Database, Lake, Stock, StockCell; print(BuildingRecord, Stock)'
         python - <<'PY'
         from epsm_data import Catalogue
         catalogue = Catalogue.load()
@@ -119,9 +128,9 @@ jobs:
         assert slots and all(slot.key.renovation_state is None for slot in slots)
         assert catalogue.get_slot(slots[0].key).slot_id == slots[0].slot_id
         assert isinstance(catalogue.summary(), dict)
-        configuration = catalogue.effective_configuration()
-        configuration["installed_smoke_detached"] = True
-        assert "installed_smoke_detached" not in catalogue.effective_configuration()
+        resolved = catalogue.resolved_dict()
+        resolved["installed_smoke_detached"] = True
+        assert "installed_smoke_detached" not in catalogue.resolved_dict()
         print("Installed catalogue inspection passed:", catalogue.dataset_id)
         PY
 'on':

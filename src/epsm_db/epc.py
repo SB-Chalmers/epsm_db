@@ -1,7 +1,19 @@
 """Reviewed EPC value parsing and bounded observation assembly; no database access."""
 
-from collections import defaultdict
+import codecs
 import math
+from collections import defaultdict
+
+
+def detect_encoding(path):
+    """UTF-16 or UTF-8 by byte-order mark; Swedish register exports default to Latin-1."""
+    with path.open("rb") as stream:
+        prefix = stream.read(4)
+    if prefix.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+        return "utf-16"
+    if prefix.startswith(codecs.BOM_UTF8):
+        return "utf-8-sig"
+    return "latin-1"
 
 
 def strict_value(value, kind):

@@ -1,3 +1,28 @@
+# Release 0.5.0 — the data lake is the database (candidate, 29 October 2026)
+
+`epsm_db` is now only the GIS-first data lake: `Lake` and `epsm-db` for
+administration, `Database`, `Stock`, `StockCell`, `BuildingRecord`, `Receipt`
+and `BuildingType` for Python use. The earlier `sweden_ubem` national ingestion
+pipeline, its `sweden-ubem` command, the schema 0.0.4 migrations and baselines,
+the native PostgreSQL and remote-runtime scripts, their notebooks, studies and
+tests are retired and kept verbatim under `archive/2026-10-29/`. They are not
+installed or tested. The XML register parser (`epsm_db.lm_xml`), the EPC export
+encoding detection and `epsm_db.weather.WeatherReference` moved into the package.
+
+Stock cells follow Data 0.7.0's frozen LoD2 catalogue: the fabric slot is selected
+by type, era, climate zone and renovation state, while the observed ventilation
+code only filters buildings. A zone-complete cell attaches an explicit
+`assumption` assignment (slot, resolved-catalogue checksum, construction years)
+to each record copy; a partial cell invents none. Source types outside the
+authored catalogue form the `generic` cohort: the matrix keeps their counts and
+their fabric assumption borrows the multifamily representative, with the donor
+recorded in the assignment's `selection`. `StockCell` accepts its type and era
+positionally.
+
+Requires Data 0.7.0 (`catalogue` extra) and EPSM 0.5.0 with Core 0.9.0 (`epsm`
+extra). PostGIS acceptance runs against a disposable `epsm_api_validation_*`
+database named by `EPSM_LAKE_TEST_URL`.
+
 # Release 0.4.0 — Stock workflow over the GIS lake
 
 Canonical `Database`, lazy `Stock`/`StockCell`, portable `BuildingRecord`, and

@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 
-from sweden_ubem.lm_xml import parse_address_element, parse_building_element
+from epsm_db.lm_xml import parse_address_element, parse_building_element
 
 
 def test_building_xml_preserves_repeated_purposes_and_entrances():

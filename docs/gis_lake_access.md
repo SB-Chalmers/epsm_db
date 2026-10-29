@@ -1,7 +1,7 @@
 # Connect to the GIS-first lake
 
 The replacement database is `epsm_lake`. It is a candidate for the main lake;
-its build is independent of the paused `sweden_ubem_v004_baseline` ingestion.
+its build is independent of the retired `sweden_ubem_v004_baseline` database.
 Source rows become visible in map layers at publication stages. Inspect
 `gis.publication_status` and `gis.sources` for freshness and incomplete files.
 An empty layer during the build does not mean its national source is empty.
