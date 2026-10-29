@@ -5,6 +5,14 @@ Pull requests into `dev` or `main` run one `ci` job on Python 3.13
 necessary dependencies; it does not certify the entire EPSM ecosystem.
 The executable commands are in [.github/workflows/ci.yml](../.github/workflows/ci.yml).
 
+## Dependency selection during a version transition
+
+The development job installs no sibling EPSM packages, so the handbook's
+[transition rule](https://github.com/SB-Chalmers/epsm_development/blob/main/docs/platform-compatibility.md#development-checks-during-a-version-transition)
+for development checks does not apply to it: there is no supported pin to
+satisfy and nothing to select from a candidate record. Sibling revisions are
+selected only in Release verification, from the EPSM manifest.
+
 Run **Release verification** explicitly before tagging or publishing a release,
 and when a change needs the full engine, database, browser or installed-package
 checks. Select one exact dependency cohort and keep that selection through the
