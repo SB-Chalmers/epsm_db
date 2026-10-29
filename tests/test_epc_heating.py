@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from sweden_ubem.epc_heating import heating_target_from_raw, heating_target_from_record, period_heating_kwh
+from epsm_db.epc_heating import heating_target_from_raw, heating_target_from_record, period_heating_kwh
 from epsm_core.weather import hourly_axis
 
 

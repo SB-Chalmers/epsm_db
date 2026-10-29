@@ -4,7 +4,7 @@ from datetime import date
 from shapely.geometry import box
 
 from epsm_db import BuildingRecord, BuildingType, Stock
-from sweden_ubem.stock import Stock as ExistingStock
+from epsm_db.stock import Stock as ExistingStock
 
 
 def test_record_roundtrip_has_no_credentials_and_keeps_observations():
@@ -54,7 +54,7 @@ def test_record_and_receipt_inspection_is_bounded_and_connection_free(monkeypatc
     def forbidden(*args, **kwargs):
         raise AssertionError("Inspection must not query the database")
 
-    monkeypatch.setattr("sweden_ubem.database._connect", forbidden)
+    monkeypatch.setattr("psycopg.connect", forbidden)
     unusual = "long\\\n\t\x00🧱" * 200
     receipt = Receipt(
         unusual,

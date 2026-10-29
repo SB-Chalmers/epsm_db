@@ -17,6 +17,7 @@ import pandas as pd
 
 from .enums import BuildingType
 from .epc import strict_value
+from ._logging import operation as logged_operation
 
 
 def _display_label(value, limit=24):
@@ -129,7 +130,7 @@ class Receipt:
         ]:
             lines.extend(f"{label}: {x}" for x in values)
         if self.truncated:
-            lines.append(f"Selection truncated; continue after_uuid={self.next_cursor!r}")
+            lines.append(f"Selection truncated; continue after numeric cursor={self.next_cursor!r}")
         return "\n".join(lines)
 
 
@@ -152,6 +153,8 @@ class BuildingRecord:
     quality_findings: tuple[dict, ...] = ()
     receipt: Receipt = field(default_factory=lambda: Receipt("unknown"))
     archetype_assignments: tuple[dict, ...] = ()
+    areas: tuple[dict, ...] = ()
+    property_parts: tuple[dict, ...] = ()
     _database_url: str | None = field(default=None, repr=False, compare=False)
 
     def __repr__(self):
@@ -184,11 +187,13 @@ class BuildingRecord:
     def to_dict(self):
         """Portable evidence without the database connection or credentials."""
         from epsm_db.serialization import record_to_dict
+
         return record_to_dict(self)
 
     @classmethod
     def from_dict(cls, value):
         from epsm_db.serialization import record_from_dict
+
         return record_from_dict(value)
 
     def completeness(self):
@@ -317,23 +322,31 @@ class BuildingRecord:
         lon, lat = Transformer.from_crs(3006, 4326, always_xy=True).transform(point.x, point.y)
         return {"latitude": lat, "longitude": lon}
 
-    def neighbours(self, *, radius_m=100, **kwargs):
-        from .io import fetch_records
+    def neighbours(self, *, radius_m=100, limit=1000):
+        """Fetch a bounded neighbouring selection; portable records need a connection."""
+        from .database import Database
 
-        kwargs.setdefault("database_url", self._database_url)
-        return fetch_records.within_radius(
-            self.geometry,
-            radius_m=radius_m,
-            epsg=3006,
-            dataset=self.dataset_id,
-            exclude_uuid=self.building_id,
-            **kwargs,
+        if not self._database_url:
+            raise ValueError("Portable records have no database connection; use Database.stock().")
+        if self.geometry is None:
+            raise ValueError("A footprint is required for neighbours")
+        return (
+            Database(self._database_url)
+            .stock()
+            .within_radius(
+                self.geometry,
+                radius_m=radius_m,
+                exclude=self.building_id,
+            )
+            .frame(limit=limit)
         )
 
+    @logged_operation("database.record.convert", level=10)
     def to_epsm(self, **kwargs):
         from epsm import Building
+        from ._logging import call_with_context
 
-        return Building.from_record(self, **kwargs)
+        return call_with_context(Building.from_record, self, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -351,7 +364,7 @@ class RecordCollection:
         return self.records[item]
 
     def one(self):
-        from .io import AmbiguousRecordError, RecordNotFoundError
+        from .errors import AmbiguousRecordError, RecordNotFoundError
 
         if not self.records:
             raise RecordNotFoundError(self.receipt)
