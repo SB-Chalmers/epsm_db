@@ -106,7 +106,7 @@ jobs:
         with psycopg.connect("postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/epsm_api_validation_ci", autocommit=True) as c:
             c.execute("CREATE EXTENSION IF NOT EXISTS postgis")
         PY
-        python -m epsm_db init --help >/dev/null
+        python -m epsm_db init --database-url postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/epsm_api_validation_ci
     - name: Test the lake API, stock cells, conversion and PostGIS acceptance
       env:
         EPSM_LAKE_TEST_URL: postgresql://ubem_owner:ubem-test-only@127.0.0.1:5432/epsm_api_validation_ci
