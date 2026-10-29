@@ -1,0 +1,25 @@
+flowchart TD
+    DB["Database"] --> Stock["Stock: geographic selection"]
+    Stock --> Cell["StockCell: type and era selection"]
+    Stock --> Record["BuildingRecord"]
+    Cell --> Record
+    Building["Building and geographic footprint components"] --> Record
+    Height["All component height evidence"] --> Record
+    Property["Properties, unresolved parts and addresses"] --> Record
+    EPC["EPC certificates, subjects and observations"] --> Record
+    Area["Versioned boundaries"] --> Record
+    Area --> Stats["SCB observations: period and categories"]
+    Stats --> Context["Explicit indicator / period context query"]
+    Stock --> Extract["Complete scoped GeoPackage extract"]
+    Record --> Convert["to_epsm()"]
+    Archetype["Data Archetype: explicitly selected"] --> Convert
+    Convert --> Model["EPSM Building: Core physical model"]
+    Convert --> Receipt["Conversion receipt and requirements"]
+    Archetype --> Construction["ConstructionSet"]
+    Construction --> Element["Element"]
+    Element --> Component["Construction assembly component"]
+    Component --> Layer["Layer"]
+    Layer --> Material["Material"]
+    Archetype --> Definitions["Operating profile, HVAC template, envelope"]
+    Model --> Run["Explicit weather, engine and settings"]
+    Run --> Results["Energy and LCA results"]

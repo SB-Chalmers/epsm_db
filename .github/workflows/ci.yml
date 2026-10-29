@@ -25,5 +25,5 @@ jobs:
       run: python -m pip install build '.[test]'
     - name: Run offline development checks
       run: |
-        python -m pytest -q tests/test_remote_pipeline.py tests/test_source_inventory.py tests/test_snapshot_paths.py tests/test_documentation.py tests/test_packaged_resources.py
+        python -m pytest -q tests/test_gis_stock_api.py tests/test_portable_records.py tests/test_lm_xml.py tests/test_operation_logging.py tests/test_documentation.py tests/test_packaged_resources.py tests/test_manage_db_access.py
         python -m build --wheel

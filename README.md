@@ -2,76 +2,130 @@
 
 <!-- EPSM introduction: Pocket CAD -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/welcome/epsm_db-dark.png">
-  <img src="docs/assets/welcome/epsm_db.png" width="160" height="160" alt="EPSM Database — Three record drawers with one active record label; persisted catalogue storage.">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/epsm_db-dark.png">
+  <img src="docs/assets/brand/epsm_db.png" width="64" height="64" alt="EPSM Database — building evidence store">
 </picture>
 
-Explore the evidence behind Swedish buildings. EPSM Database brings geometry,
-energy certificates and statistical context into PostgreSQL/PostGIS, with Python
-tools for querying and inspecting records. Sources, coverage and missing inputs
-stay visible when you pass selected evidence to an EPSM model.
+Explore Swedish building evidence, trace it to its sources and pass selected records into EPSM models.
 
-**[Explore the EPSM platform →](https://github.com/SB-Chalmers/epsm/blob/main/docs/platform.md)**
+[Explore the EPSM platform](https://github.com/SB-Chalmers/epsm/blob/main/docs/platform.md)
 <!-- /EPSM introduction -->
 
-[![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/SB-Chalmers/epsm_db/actions/workflows/ci.yml) [![Releases](https://img.shields.io/badge/releases-GitHub-181717?logo=github&logoColor=white)](https://github.com/SB-Chalmers/epsm_db/releases) [![Issues](https://img.shields.io/badge/issues-GitHub-181717?logo=github&logoColor=white)](https://github.com/SB-Chalmers/epsm_db/issues)
+Version **0.5.0** provides the stock Python workflow over a PostgreSQL/PostGIS lake for linked property,
+building, component, address, EPC and height evidence, with versioned boundaries,
+SCB statistics and NVDB road data.
 
-## Getting started
+**Import sources → link entities → publish GIS layers.**
 
-Use Python 3.11 or newer and Docker Compose. Clone the repository to begin:
+- Ordinary numeric keys and original source identifiers; no per-geometry hashing.
+- Streaming COPY imports with file checkpoints and resumable bounded batches.
+- Explicit relationships, including ambiguous/unmatched evidence.
+- Ready-to-use layers with typed EPSG:3006 geometry, spatial indexes, stable feature
+  IDs and prepared attributes. Panning does not repeat the evidence joins.
+- Geometry and available height evidence can be published independently of EPC
+  matching, modelling, acceptance runs and enrichment.
 
-```sh
-git clone https://github.com/SB-Chalmers/epsm_db.git
-cd epsm_db
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -e '.[notebook]'
-UBEM_POSTGRES_PORT=55434 docker compose -p epsm-db-quickstart up -d --wait
-export UBEM_DATABASE_URL='postgresql://ubem_owner:ubem-local-only@127.0.0.1:55434/sweden_ubem'
-epsm-db db init --schema-only
-epsm-db db status
+## Start a fresh lake
+
+Requires Python 3.11+, PostgreSQL 15+ and PostGIS. Create a fresh database owned by
+its ingestion administrator; use `.pgpass` or your local credential mechanism.
+
+```bash
+python -m pip install -e .
+export EPSM_DATABASE_URL='postgresql://ubem_owner@127.0.0.1:55433/epsm_gis'
+epsm-db init
+epsm-db ingest config/gis-lake.toml --source-root /path/to/source-bundle \
+  --kinds components heights
+epsm-db link
+epsm-db publish
+epsm-db status
 ```
 
-This creates an empty local database on port 55434. To work with real building
-evidence, acquire the source bundle separately and follow the [detailed setup
-guide](docs/guide.md) before importing it. Source datasets are excluded from Git.
+Add building registry, address, property and EPC sources later with
+`--kinds buildings addresses properties epc`, then link and publish again.
+`epsm-db run config/gis-lake.toml --source-root /path/to/source-bundle` performs
+the complete workflow. The [GIS lake guide](docs/gis_first_lake.md) explains
+source adapters, matching rules, publication freshness and access.
 
-For an existing processed database, set `UBEM_DATABASE_URL` to its connection URL
-and start with the [exploration notebook](notebooks/explore_stock.ipynb).
+## Use in QGIS or Python
 
-## Documentation
+Connect to the database and expand **gis**. Drag **buildings**, **component_heights**,
+**properties**, **addresses**, **building_properties**, **epc_links**, **boundaries**
+or **roads** onto the map.
+Missing evidence and uncertain links have explicit status fields.
 
-- [Setup, record queries and EPSM integration](docs/guide.md)
-- [Database design and ingestion](docs/ubem_database_design_and_setup.md)
-- [Source bundle and portable paths](docs/source_paths.md)
-- [Evidence matching and reporting](docs/epc_matching_and_reporting.md)
-- [Validation rules](docs/validation_rules.md)
+```python
+from epsm_db import Lake
+rows = Lake().features('component_heights', municipality_code='1485', limit=1000)
+```
 
-## License
+A database administrator can grant existing reader roles access using
+`epsm-db grant ubem_readonly`. The map layers are materialized views with spatial
+indexes; `components` and `footprints` are convenient aliases. Full SQL remains
+available for detailed relational queries and analysis.
 
-EPSM-owned software and documentation use the [MIT license](LICENSE).
-Source datasets, catalogue evidence and third-party material retain their
-providers' terms and attribution; MIT does not grant new redistribution rights
-to those sources.
+## Boundary and road sources
 
-## People and support
+The [updated model diagram](docs/gis_first_lake.md#model) includes country, county,
+municipality, RegSO, DeSO, SCB grids, statistical observations and NVDB road data.
+Statistics retain both observation period and boundary edition. Buildings link to
+areas; NVDB features retain network references and their original attributes.
 
-Developed at Chalmers University of Technology as part of the EPSM research platform.
+The Mac's `DeSO_2025.gpkg` and NVDB `geopackage.zip` sources are declared in
+`config/gis-context.toml`. See [transfer and import instructions](docs/mac_gis_sources.md).
+Declarations alone do not load sources; inspect the deployment coverage before importing.
 
-**Funding**: Swedish Energy Agency (Project ID: P2024-04053)
+## Stock Python API
 
-**Partners**:
+```python
+from epsm_db import Database
 
-- Lindholmen Science Park AB
-- Sinom AB
-- Stiftelsen Chalmers Industriteknik
+db = Database("service=epsm_lake")
+stock = db.stock(municipality="1485")
+cell = stock.cell(building_type="multi_family", era="SE.02")
+frame = cell.frame()  # Bounded GeoDataFrame; receipt in frame.attrs["receipt"]
+for record in cell.iter_records(batch_size=100):
+    print(record.building_id)
+buildings, receipts = cell.to_epsm()  # Evidence-only drafts
+buildings, receipts = cell.to_epsm(archetype="cell")  # Explicit assumptions
+cell.extract("selected-buildings.gpkg")  # Complete selection
+```
 
-**Team**:
+See [the stock API and EPSM model diagram](docs/stock_api.md) for current Data/Core
+integration, receipts, portable records, geographic filters and complete extracts.
 
-- **Lead Developer**: Sanjay Somanath
-- **Principal Investigator**: Alexander Hollberg
-- **Contributors**: Yinan Yu, Dag Wästberg
+Catalogue inspection uses Data 0.7.0+ public `Catalogue` methods. See
+[catalogue inspection](docs/catalogue_inspection.md) and the
+[offline record example](examples/catalogue_record.py).
 
-<p align="center">
-  <img src="docs/assets/welcome/logos.png" width="100%" alt="Chalmers University of Technology, Chalmers Industriteknik, Sinom, Lindholmen Science Park and Swedish Energy Agency logos">
-</p>
+## Existing databases
+
+`Database`, `Stock` and `BuildingRecord` target GIS lake schema version 2.
+Existing version-1 GIS lakes use `epsm-db migrate`, then `epsm-db publish` after
+the national build finishes. This extends the lake without source reingestion.
+
+See [remote user access](docs/remote_user_access.md) and the
+[GIS-first design and rollout status](docs/gis_first_lake.md).
+
+## Retired pipeline
+
+The earlier national ingestion pipeline (`sweden_ubem`, its `sweden-ubem` command,
+schema 0.0.4 migrations, the native PostgreSQL scripts, the remote runtime and
+their studies) was retired on 29 October 2026 when the data lake became the
+supported database. Its files are kept verbatim under `archive/2026-10-29/` with
+their original paths; they are not installed, tested or maintained. The last
+release that shipped it is [v0.3.0](https://github.com/SB-Chalmers/epsm_db/releases/tag/v0.3.0).
+
+The separate `epsm_lake` national database finished ingestion and publication on
+17 October 2026. The stock API is deployed on schema version 2.
+Registered readers can use QGIS and Python through Tailscale. National performance
+benchmarking and database promotion remain separate; the old database is retained.
+
+## Live candidate lake and area extracts
+
+See [GIS lake access](docs/gis_lake_access.md) for QGIS/Python connection settings,
+GeoPackage extracts, supplied source coverage and build monitoring.
+
+[Automatic SCB downloads](docs/scb_open_data.md) add national population, household,
+housing, income, employment, education, vehicle and energy statistics to the same
+area/statistics model.

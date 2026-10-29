@@ -1,3 +1,8 @@
+> For the current GIS lake workflow, see [the stock API](stock_api.md).
+> The dataset-bound and automatic assignment examples below describe the retired
+> SQL stock (archived under `archive/2026-10-29/`). Current `epsm_db.Stock` loads its
+> catalogue lazily and applies representative archetypes only when requested.
+
 # Inspect catalogue classifications alongside evidence
 
 Stock exploration uses the public `epsm_data.Catalogue` object. It reads Data's

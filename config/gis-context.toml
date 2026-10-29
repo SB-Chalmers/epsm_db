@@ -1,0 +1,50 @@
+# Mac-supplied GIS datasets. Use --source-root for the laptop's incoming directory.
+schema_version = 1
+root = "../data/gis-lake-incoming"
+srid = 3006
+
+[[sources]]
+name = "scb-deso-2025"
+version = "2025_v1"
+kind = "areas"
+path = "DeSO_2025.gpkg"
+layer = "DeSO_2025"
+area_type = "deso"
+boundary_version = "2025"
+parent_type = "regso"
+parent_boundary_version = "2025"
+
+[sources.columns]
+area_code = "desokod"
+municipality_code = "kommunkod"
+parent_area_code = "regsokod"
+# kommunnamn names the municipality, not the individual DeSO area.
+# RegSO parent codes resolve once matching RegSO 2025 boundaries are imported.
+
+[[sources]]
+name = "nvdb-road-widths"
+version = "mac-export-2026-10-16"
+kind = "roads"
+path = "nvdb/Sverige_Vägbredd_GeoPackage.zip"
+layer = "NVDB_DK_O_31_Vagbredd"
+
+[sources.columns]
+network_link_id = "ELEMENT_ID"
+start_measure = "START_MEASURE"
+end_measure = "END_MEASURE"
+# ELEMENT_ID is a source network reference, not a unique theme feature key.
+# Bredd and the remaining native attributes stay in attributes.
+
+[[sources]]
+name = "nvdb-road-network"
+version = "mac-export-2026-10-16"
+kind = "roads"
+path = "nvdb/Sverige_Vägtrafiknät_GeoPackage.zip"
+layer = "NVDB_DK_O_88_Vagtrafiknat"
+
+[sources.columns]
+network_link_id = "ELEMENT_ID"
+start_measure = "START_MEASURE"
+end_measure = "END_MEASURE"
+# Nattyp retains cycle/car-network classification in attributes.
+# Feature keys include the archive, layer and FID rather than ELEMENT_ID alone.

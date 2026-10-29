@@ -1,0 +1,93 @@
+erDiagram
+    SOURCE ||--o{ SOURCE_FILE : provides
+    SOURCE_FILE o|--o{ BUILDING : registry_record
+    SOURCE_FILE ||--o{ COMPONENT : geometry_record
+    SOURCE_FILE ||--o{ PROPERTY_PART : polygon_record
+    SOURCE_FILE ||--o{ ADDRESS : address_record
+    SOURCE_FILE ||--o{ EPC_RECORD : certificate_record
+    SOURCE_FILE ||--o{ HEIGHT : measurement_record
+    SOURCE_FILE ||--o{ AREA : boundary_record
+    SOURCE_FILE ||--o{ STATISTIC : observation_record
+    SOURCE_FILE ||--o{ ROAD : nvdb_record
+
+    BUILDING ||--|| MODEL_FACTS : summarized_at_publication
+    EPC ||--|| MODEL_CERTIFICATE : scope_and_date_summary
+
+    PROPERTY o|--o{ PROPERTY_PART : contains_when_source_reference_exists
+    BUILDING ||--o{ COMPONENT : contains
+    COMPONENT o|--o{ HEIGHT : resolves_source_reference
+    BUILDING ||--o{ BUILDING_PROPERTY : has
+    PROPERTY ||--o{ BUILDING_PROPERTY : links
+    BUILDING ||--o{ BUILDING_ADDRESS : has
+    ADDRESS o|--o{ BUILDING_ADDRESS : resolves
+    EPC ||--o{ EPC_SUBJECT : describes
+    EPC ||--o{ EPC_RECORD : preserves
+    BUILDING ||--o{ BUILDING_EPC : has
+    EPC_SUBJECT ||--o{ BUILDING_EPC : links
+    AREA o|--o{ AREA : explicit_parent_reference
+    AREA o|--o{ STATISTIC : matches_type_code_edition
+    BUILDING ||--o{ BUILDING_AREA : located_in
+    AREA ||--o{ BUILDING_AREA : contains_point
+
+    BUILDING {
+        bigint building_id PK
+        text external_id UK
+        geometry footprint_3006
+    }
+    COMPONENT {
+        bigint component_id PK
+        bigint building_id FK
+        text external_id UK
+        geometry polygon_3006
+    }
+    AREA {
+        bigint area_id PK
+        text area_type "country county municipality regso deso grid custom"
+        text external_id "original area code with leading zeros"
+        text boundary_version "geography edition"
+        bigint parent_area_id FK
+        geometry polygon_3006
+    }
+    STATISTIC {
+        bigint observation_id PK
+        bigint area_id FK "nullable until geography is available"
+        text indicator
+        text period "observation period"
+        text unit
+        json dimensions "sex age category"
+        float value "nullable for missing or suppressed values"
+        text value_status
+    }
+    BUILDING_AREA {
+        bigint link_id PK
+        bigint building_id FK
+        bigint area_id FK
+        text status "matched or ambiguous"
+        text method "representative point"
+    }
+    ROAD {
+        bigint road_id PK
+        text external_id UK
+        text source_layer
+        text network_link_id "NVDB source network reference"
+        float start_measure
+        float end_measure
+        geometry geometry_3006
+        json attributes "original NVDB fields"
+    }
+    MODEL_FACTS {
+        bigint fid PK "numeric building key"
+        text building_type "derived classification"
+        integer construction_year "reported registry year"
+        bigint selected_epc_id "nullable when latest is unresolved"
+        boolean single_building_epc
+        text ventilation_system "reported or explicitly unresolved"
+    }
+    MODEL_CERTIFICATE {
+        bigint fid PK "numeric certificate key"
+        date certificate_date "nullable"
+        text date_status "reviewed source mapping"
+        bigint subject_count
+        bigint loaded_building_count
+        text matching_status
+    }

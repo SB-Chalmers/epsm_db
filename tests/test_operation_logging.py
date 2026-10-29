@@ -6,11 +6,12 @@
 import inspect
 import logging
 
-from sweden_ubem.io import RecordFetcher
+from epsm_db import Database
+from epsm_db import stock as stock_module
 
 
 def test_public_operation_accepts_explicit_context():
-    parameter = inspect.signature(RecordFetcher.from_uuid).parameters["log_context"]
+    parameter = inspect.signature(Database.record).parameters["log_context"]
     assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
     assert parameter.default is None
 
@@ -38,8 +39,10 @@ def test_rejected_operation_keeps_context_and_reports_failure(caplog):
 
     with caplog.at_level(logging.DEBUG):
         with pytest.raises((ValueError, TypeError, AttributeError)):
-            RecordFetcher().from_uuid(
-                "invalid-uuid", log_context={"study_id": "logging-test", "operation_id": "parent"}
+            next(
+                Database("postgresql://invalid")
+                .stock()
+                .iter_records(batch_size=0, log_context={"study_id": "logging-test", "operation_id": "parent"})
             )
     records = [record for record in caplog.records if hasattr(record, "epsm_event")]
     assert records[0].epsm_event.endswith(".started")
@@ -51,33 +54,25 @@ def test_rejected_operation_keeps_context_and_reports_failure(caplog):
 
 
 def test_interleaved_stock_iterators_restore_context(monkeypatch, caplog):
+    from contextlib import contextmanager
     from types import SimpleNamespace
 
-    from sweden_ubem import stock
-    from sweden_ubem._logging import current_context
+    from epsm_db._logging import current_context
 
     observed = []
 
-    class Page(list):
-        receipt = SimpleNamespace(truncated=False)
+    @contextmanager
+    def _read():
+        observed.append(current_context()["case_id"])
+        yield SimpleNamespace(execute=lambda *args: SimpleNamespace(fetchall=list)), {}
 
-    class Reader:
-        def all(self, **options):
-            observed.append(current_context()["case_id"])
-            return Page(["record"])
-
-    monkeypatch.setattr(stock.fetch_records, "using", lambda *args, **kwargs: Reader())
-    collection = stock.Stock(SimpleNamespace(database_url="unused", dataset_id="test"))
+    collection = stock_module.Stock(SimpleNamespace(_read=_read))
+    monkeypatch.setattr(stock_module.Stock, "_where", lambda self, connection: ("true", []))
     first = collection.iter_records(log_context={"case_id": "first"})
     second = collection.iter_records(log_context={"case_id": "second"})
     with caplog.at_level(logging.DEBUG):
-        assert next(first) == "record"
+        assert list(first) == []
         assert current_context() == {}
-        assert next(second) == "record"
-        assert current_context() == {}
-        first.close()
         assert list(second) == []
+        assert current_context() == {}
     assert observed == ["first", "second"]
-    events = [r.epsm_event for r in caplog.records if hasattr(r, "epsm_event")]
-    assert "database.stock.read.cancelled" in events
-    assert events.count("database.stock.read.completed") == 1

@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 license = "MIT"
 license-files = ["LICENSE"]
 name = "epsm_db"
-version = "0.3.0"
-description = "PostGIS database for Swedish building evidence"
+version = "0.5.0"
+description = "GIS-first PostGIS data lake for linked Swedish building evidence"
 requires-python = ">=3.11"
 dependencies = [
   "psycopg[binary]>=3.2,<4",
@@ -19,31 +19,31 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8,<10"]
+test = ["pytest>=8,<10", "flask>=3.1,<4"]
+onboarding = ["flask>=3.1,<4", "gunicorn>=23,<24"]
 notebook = ["matplotlib>=3.9,<4", "nbclient>=0.10,<1", "ipykernel>=6,<8", "jupyterlab>=4,<5"]
-catalogue = ["epsm_data>=0.6.0"]
-epsm = ["epsm>=0.2.0", "epsm_core>=0.4.0", "epsm_data>=0.6.0"]
-weather = ["smhi2epw"]
+catalogue = ["epsm_data>=0.7.0,<0.8"]
+epsm = ["epsm>=0.5.0,<0.6", "epsm_core>=0.9.0,<0.10", "epsm_data>=0.7.0,<0.8"]
+weather = ["smhi2epw>=1.3.0,<2"]
 
 [project.scripts]
-epsm-db = "sweden_ubem.cli:main"
-sweden-ubem = "sweden_ubem.cli:main"
+epsm-db = "epsm_db.lake.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["epsm_db*"]
 
 [tool.setuptools.package-data]
-sweden_ubem = ["municipality_names.json"]
+epsm_db = ["municipality_names.json"]
 
 [tool.setuptools.data-files]
-"share/epsm_db/config" = ["config/source_inventory.toml"]
-"share/epsm_db/sql/baselines/0.0.4" = ["sql/baselines/0.0.4/*.sql"]
-"share/epsm_db/sql/migrations" = ["sql/migrations/*.sql"]
+"share/epsm_db/config" = ["config/gis-lake.toml", "config/gis-context.toml", "config/gis-statistics.example.toml", "config/scb-open-data.toml"]
+"share/epsm_db/sql/lake" = ["sql/lake/*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-markers = ["integration: requires local Swedish source releases", "postgis: requires UBEM_DATABASE_URL"]
+markers = ["postgis: requires EPSM_LAKE_TEST_URL, a disposable validation database"]
 
 [tool.ruff]
 line-length = 100
