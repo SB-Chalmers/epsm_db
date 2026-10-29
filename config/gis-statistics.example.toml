@@ -1,0 +1,40 @@
+# Examples, not a claim that these files have been delivered to this machine.
+schema_version = 1
+root = "/path/to/context-sources"
+srid = 3006
+
+[[sources]]
+name = "scb-statistical-areas"
+version = "2025"
+kind = "areas"
+path = "boundaries/*.parquet"
+# Each row supplies area_type, area_code, boundary_version, name and geometry.
+# Types can include country, county, municipality, regso, deso, population_grid_1km.
+
+[[sources]]
+name = "scb-statistics"
+version = "2026-download"
+kind = "statistics"
+path = "statistics/*.csv"
+# Long-form columns: area_type, area_code, boundary_version, indicator, period,
+# value, unit, plus configured categorical dimensions. Codes remain strings.
+[sources.dimension_columns]
+sex = "sex"
+age_group = "age_group"
+
+# For a population grid with wide published values, import geometry and
+# observations together. The boundary edition and observation year are separate.
+[[sources]]
+name = "scb-population-grid"
+version = "2025"
+kind = "areas"
+path = "population.gpkg"
+layer = "population"
+area_type = "population_grid_1km"
+boundary_version = "2025"
+period = "2025"
+[sources.columns]
+area_code = "rut_id"
+[sources.indicators.beftotalt]
+indicator = "scb:population:total"
+unit = "persons"

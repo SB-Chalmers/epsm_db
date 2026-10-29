@@ -23,25 +23,9 @@ from .enums import BuildingType
 from .records import BuildingRecord, Receipt, RecordCollection
 
 
-class RetrievalError(LookupError):
-    pass
-
-
-class RecordNotFoundError(RetrievalError):
-    def __init__(self, receipt):
-        self.receipt = receipt
-        super().__init__(f"No matching building in dataset {receipt.dataset_id!r}")
-
-
-class AmbiguousRecordError(RetrievalError):
-    def __init__(self, candidates):
-        self.candidates = candidates
-        self.receipt = candidates.receipt
-        super().__init__("Multiple matching buildings; inspect .candidates or use fetch_records")
-
-
-class BoundaryUnavailableError(RetrievalError):
-    pass
+# Shared public retrieval errors retain existing catch/import behavior.
+from epsm_db.errors import (RetrievalError, RecordNotFoundError, AmbiguousRecordError,
+                            BoundaryUnavailableError)
 
 
 @lru_cache(maxsize=1)

@@ -1,4 +1,4 @@
-"""Stock classification uses public catalogue inspection without model assembly."""
+"""Legacy SQL stock classification retains the public Data catalogue contract."""
 
 from contextlib import contextmanager
 from copy import deepcopy
@@ -9,7 +9,8 @@ import pandas as pd
 import pytest
 from shapely.geometry import box
 
-from epsm_db import BuildingRecord, BuildingType, Stock
+from epsm_db import BuildingRecord, BuildingType
+from sweden_ubem.stock import Stock
 from sweden_ubem import explore
 from sweden_ubem import stock as stock_module
 from sweden_ubem.records import Receipt, RecordCollection

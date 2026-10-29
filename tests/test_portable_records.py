@@ -4,7 +4,7 @@ from datetime import date
 from shapely.geometry import box
 
 from epsm_db import BuildingRecord, BuildingType, Stock
-from sweden_ubem.stock import Stock as ExistingStock
+from epsm_db.stock import Stock as ExistingStock
 
 
 def test_record_roundtrip_has_no_credentials_and_keeps_observations():
