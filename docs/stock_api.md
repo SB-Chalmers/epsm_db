@@ -136,6 +136,11 @@ certificate. Shared certificates retain their totals without building allocation
 Reported Atemp and geometric conditioned floor area keep their different meanings.
 `epc_heating()` reports exclusions; it does not allocate a shared heating total.
 
+`epsm_db.epc_systems.observed_systems_from_record(record)` reads the systems a
+record's selected EPC reports: ventilation (S, F, Fmed, FT or FTX, with conflicts
+kept), heating carriers, and the heat-pump type. Carriers use the same families and
+regime as the heating target.
+
 Portable exchange retains `epsm-record-1` and EPSG:3006. New readers accept older
 envelopes lacking area/property-part additions. New records require this updated
 DB reader; compatibility with older decoders is not claimed. Database credentials
