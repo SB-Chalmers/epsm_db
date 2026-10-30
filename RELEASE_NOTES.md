@@ -1,3 +1,11 @@
+# Unreleased
+
+`epsm_db.epc_systems` reads what an EPC reports about a building's systems:
+ventilation with conflicts kept, heating carriers with the same families and regime
+as the measured heating target, and the heat-pump type. `observed_systems_from_record`
+is meant to replace the copies in consumers, so a model and its target agree by
+construction.
+
 # Release 0.5.0 — the data lake is the database (candidate, 29 October 2026)
 
 `epsm_db` is now only the GIS-first data lake: `Lake` and `epsm-db` for
