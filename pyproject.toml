@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 license = "MIT"
 license-files = ["LICENSE"]
 name = "epsm_db"
-version = "0.5.0"
+version = "0.6.0"
 description = "GIS-first PostGIS data lake for linked Swedish building evidence"
 requires-python = ">=3.11"
 dependencies = [
