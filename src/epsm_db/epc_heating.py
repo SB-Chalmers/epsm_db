@@ -10,7 +10,6 @@ import math
 from dataclasses import asdict, dataclass
 from datetime import date
 
-
 POST_HEATING = {
     "district_heat": ("EgiFjarrvarmeUPPV",),
     "electric_direct": ("EgiElVattenUPPV", "EgiElDirektUPPV", "EgiElLuftUPPV"),
@@ -71,6 +70,32 @@ def _month(raw, field):
     year = int(value[:-2]) + (2000 if len(value) == 4 else 0)
     month = int(value[-2:])
     return date(year, month, 1) if 1900 <= year <= 2100 and 1 <= month <= 12 else None
+
+
+def regime_of(certificate_id):
+    if certificate_id.startswith("efter_v260:"):
+        return "after_v260"
+    return "before_v260" if certificate_id.startswith("fore_v260:") else "unknown"
+
+
+def heating_fields(regime):
+    """Carrier families and their source fields for a regime; empty when it is unknown."""
+    return POST_HEATING if regime == "after_v260" else PRE_HEATING if regime == "before_v260" else {}
+
+
+def certificate_raw(record, prefix):
+    """The selected certificate's raw values and mapping statuses for a field prefix."""
+    certificate = record.selected_certificate
+    if certificate is None:
+        raise ValueError("A uniquely selected EPC is required")
+    certificate_id = certificate["certificate_id"]
+    raw = {}
+    statuses = {}
+    for row in record.observations:
+        if row["certificate_id"] == certificate_id and row["source_field"].startswith(prefix):
+            raw.setdefault(row["source_field"], []).extend(row["raw_values"])
+            statuses.setdefault(row["source_field"], []).append(row.get("mapping_status"))
+    return certificate_id, raw, statuses
 
 
 def _next_month(value):
@@ -137,13 +162,7 @@ def heating_target_from_raw(certificate_id, raw, *, mapping_statuses=None):
     Missing carrier fields are retained as missing. A single positive carrier
     family is a candidate, not proof that absent alternative carriers are zero.
     """
-    regime = (
-        "after_v260"
-        if certificate_id.startswith("efter_v260:")
-        else "before_v260"
-        if certificate_id.startswith("fore_v260:")
-        else "unknown"
-    )
+    regime = regime_of(certificate_id)
     start, last = _month(raw, "EgiForstaArManad"), _month(raw, "EgiSistaArManad")
     end = _next_month(last) if last else None
     exclusions = []
@@ -151,9 +170,7 @@ def heating_target_from_raw(certificate_id, raw, *, mapping_statuses=None):
         exclusions.append("measurement_period_not_twelve_months")
     if (_unique(raw, "EgiBeraknatVarde") or "").casefold() != "nej":
         exclusions.append("not_measurement_indicated")
-    fields = (
-        POST_HEATING if regime == "after_v260" else PRE_HEATING if regime == "before_v260" else {}
-    )
+    fields = heating_fields(regime)
     observed = {field: _number(raw, field) for members in fields.values() for field in members}
     invalid = [
         field for field in observed if _has_observation(raw, field) and observed[field] is None
@@ -224,21 +241,7 @@ def heating_target_from_raw(certificate_id, raw, *, mapping_statuses=None):
 
 
 def heating_target_from_record(record):
-    certificate = record.selected_certificate
-    if certificate is None:
-        raise ValueError("A uniquely selected EPC is required")
-    certificate_id = certificate["certificate_id"]
-    observations = [
-        row
-        for row in record.observations
-        if row["certificate_id"] == certificate_id and row["source_field"].startswith("Egi")
-    ]
-    raw = {}
-    statuses = {}
-    for row in observations:
-        field = row["source_field"]
-        raw.setdefault(field, []).extend(row["raw_values"])
-        statuses.setdefault(field, []).append(row.get("mapping_status"))
+    certificate_id, raw, statuses = certificate_raw(record, "Egi")
     return heating_target_from_raw(certificate_id, raw, mapping_statuses=statuses)
 
 
