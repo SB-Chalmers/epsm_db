@@ -14,7 +14,7 @@ def build_parser():
     parser = argparse.ArgumentParser(prog='epsm-db', description='Import source evidence, link entities, publish indexed GIS layers.')
     parser.add_argument('--log-level', choices=('DEBUG','INFO','WARNING','ERROR','CRITICAL'), default='INFO')
     commands = parser.add_subparsers(dest='command', required=True)
-    for command in ('init', 'migrate', 'ingest', 'link', 'publish', 'run', 'status', 'grant', 'extract', 'fetch-scb'):
+    for command in ('init', 'migrate', 'ingest', 'link', 'publish', 'run', 'status', 'grant', 'extract', 'fetch-scb', 'reparse-purposes'):
         sub = commands.add_parser(command)
         sub.add_argument('--database-url', help='Defaults to EPSM_DATABASE_URL, then UBEM_DATABASE_URL')
         if command in ('ingest', 'run'):
@@ -24,6 +24,14 @@ def build_parser():
             sub.add_argument('--batch-rows', type=int, default=4096)
             sub.add_argument('--batch-bytes', type=int, default=32 * 1024**2)
             sub.add_argument('--file-checksums', action='store_true', help='Optional once-per-file checksum; no geometry hashing')
+        if command == 'reparse-purposes':
+            sub.add_argument('manifest', help='The GIS lake TOML source manifest the snapshot was built from')
+            sub.add_argument('--source-root', help='Override the manifest root without changing source identities')
+            sub.add_argument('--batch-rows', type=int, default=4096)
+            sub.add_argument('--batch-bytes', type=int, default=32 * 1024**2)
+            sub.add_argument('--dry-run', action='store_true', help='Count the buildings that would change; write nothing')
+            sub.add_argument('--allow-mtime-change', action='store_true',
+                             help='Accept a copied source file: same size and, where recorded, checksum')
         if command in ('link', 'run'):
             sub.add_argument('--minimum-overlap', type=float, default=0.5)
         if command == 'fetch-scb':
@@ -61,6 +69,9 @@ def main(argv=None):
         if args.command in ('ingest', 'run'):
             result['ingest'] = lake.ingest(args.manifest, source_root=args.source_root, kinds=args.kinds,
                 batch_size=args.batch_rows, batch_bytes=args.batch_bytes, file_checksums=args.file_checksums)
+        if args.command == 'reparse-purposes':
+            result = lake.reparse_purposes(args.manifest, source_root=args.source_root, batch_size=args.batch_rows,
+                batch_bytes=args.batch_bytes, dry_run=args.dry_run, allow_mtime_change=args.allow_mtime_change)
         if args.command in ('link', 'run'):
             result['link'] = lake.link(args.minimum_overlap)
         if args.command in ('publish', 'run'):
