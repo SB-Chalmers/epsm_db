@@ -1,3 +1,11 @@
+# Release 0.6.1 — community-function purposes (22 November 2026)
+
+The register parser reads the community-function purpose element in the spelling the
+Lantmäteriet XML uses (`Samhallsfunktion`) as well as `Samhällsfunktion`, and stores it
+as `Samhällsfunktion`. Before this, those purposes were left out of `purposes`, while
+the raw values were kept. The lake's building domain must be rebuilt for
+`gis.model_facts` to see them.
+
 # Release 0.6.0 — observed EPC systems (21 November 2026)
 
 `epsm_db.epc_systems` reads what an EPC reports about a building's systems:

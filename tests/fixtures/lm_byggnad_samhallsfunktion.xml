@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Byggnad xmlns="urn:lm">
+  <objektidentitet>b-school</objektidentitet>
+  <objektstatus>Gällande</objektstatus>
+  <Byggnadsattribut>
+    <objektversion>1</objektversion>
+    <nybyggnadsar>1968</nybyggnadsar>
+    <huvudbyggnad>true</huvudbyggnad>
+  </Byggnadsattribut>
+  <Samhallsfunktion>
+    <huvudandamal>true</huvudandamal>
+    <andamal>Skola</andamal>
+    <osakertAndamal>false</osakertAndamal>
+  </Samhallsfunktion>
+  <Verksamhet>
+    <huvudandamal>false</huvudandamal>
+    <andamal>Kontor</andamal>
+  </Verksamhet>
+</Byggnad>

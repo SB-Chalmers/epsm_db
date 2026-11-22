@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 from epsm_db.lm_xml import parse_address_element, parse_building_element
 
@@ -29,3 +30,24 @@ def test_address_gml_axis_order_is_northing_easting():
     </Belagenhetsadress>""")
     row = parse_address_element(root, source_file="fixture.xml", source_record=1)
     assert (row["easting"], row["northing"]) == (320000.0, 6400000.0)
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_samhallsfunktion_purpose_is_read_from_lm_spelling():
+    root = ET.parse(FIXTURES / "lm_byggnad_samhallsfunktion.xml").getroot()
+    row = parse_building_element(root, source_file="fixture.xml", source_record=1)
+    assert [(p["category"], p["detail"], p["is_main"]) for p in row["purposes"]] == [
+        ("Samhällsfunktion", "Skola", True),
+        ("Verksamhet", "Kontor", False),
+    ]
+    assert row["original_values"]["Byggnad/Samhallsfunktion/andamal"] == ["Skola"]
+
+
+def test_samhallsfunktion_purpose_umlaut_spelling_still_read():
+    root = ET.fromstring("""<Byggnad xmlns='urn:lm'><objektidentitet>b2</objektidentitet>
+      <Samhällsfunktion><huvudandamal>true</huvudandamal><andamal>Vårdcentral</andamal></Samhällsfunktion>
+    </Byggnad>""")
+    row = parse_building_element(root, source_file="fixture.xml", source_record=2)
+    assert [(p["category"], p["detail"]) for p in row["purposes"]] == [("Samhällsfunktion", "Vårdcentral")]
