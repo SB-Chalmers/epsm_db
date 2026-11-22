@@ -50,22 +50,27 @@ def flattened_values(element: ET.Element) -> dict[str, list[str]]:
     return values
 
 
+PURPOSE_TYPES = {
+    "Bostad",
+    "Industri",
+    "Samhällsfunktion",
+    "Verksamhet",
+    "Ekonomibyggnad",
+    "Komplementbyggnad",
+    "ÖvrigByggnad",
+    "OvrigByggnad",
+}
+# The Lantmäteriet XML spells the community-function element without the umlaut.
+# Both spellings are read and stored under the canonical category name.
+PURPOSE_ALIASES = {"Samhallsfunktion": "Samhällsfunktion"}
+
+
 def parse_building_element(
     element: ET.Element, *, source_file: str, source_record: int
 ) -> dict[str, Any]:
     building_id = _text(element, "objektidentitet")
     purposes: list[dict[str, Any]] = []
     entrances: list[dict[str, Any]] = []
-    purpose_types = {
-        "Bostad",
-        "Industri",
-        "Samhällsfunktion",
-        "Verksamhet",
-        "Ekonomibyggnad",
-        "Komplementbyggnad",
-        "ÖvrigByggnad",
-        "OvrigByggnad",
-    }
     for child in element:
         kind = local_name(child.tag)
         if kind == "Entre":
@@ -80,10 +85,10 @@ def parse_building_element(
                     "original_values": flattened_values(child),
                 }
             )
-        elif kind in purpose_types:
+        elif PURPOSE_ALIASES.get(kind, kind) in PURPOSE_TYPES:
             purposes.append(
                 {
-                    "category": kind,
+                    "category": PURPOSE_ALIASES.get(kind, kind),
                     "detail": _text(child, "andamal"),
                     "is_main": _boolean(child, "huvudandamal"),
                     "dwelling_area_m2": _text(child, "totalBoarea"),

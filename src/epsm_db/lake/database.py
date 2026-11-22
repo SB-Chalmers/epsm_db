@@ -103,6 +103,11 @@ class Lake:
         from .ingest import ingest_manifest
         return ingest_manifest(self, manifest, **kwargs)
 
+    def reparse_purposes(self, manifest, **kwargs):
+        """Re-read building purposes from already imported files after a parser fix."""
+        from .reparse import reparse_purposes
+        return reparse_purposes(self, manifest, **kwargs)
+
     def link(self, minimum_overlap=0.5):
         if not 0.5 <= minimum_overlap <= 1:
             raise ValueError('minimum_overlap must be between 0.5 and 1')

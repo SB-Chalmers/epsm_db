@@ -129,6 +129,28 @@ keys are stable within a snapshot, while original source identifiers connect
 releases. This first implementation intentionally has no in-place release
 replacement or automatic migration from schema 0.0.4.
 
+### Re-reading building purposes after a parser fix
+
+One narrow exception exists for a fix in the *parser* while the source files are
+unchanged. `epsm-db reparse-purposes` reads the building register files of the
+manifest again and rewrites only the parsed `purposes` (and the copy kept in
+`attributes`) of buildings whose stored record is otherwise identical to the file.
+It creates no building and changes no key, link, geometry or other domain.
+
+```bash
+epsm-db reparse-purposes config/gis-lake.toml --source-root /path/to/source-bundle --dry-run
+epsm-db reparse-purposes config/gis-lake.toml --source-root /path/to/source-bundle
+epsm-db link
+epsm-db publish
+```
+
+`--dry-run` reports how many buildings would change and writes nothing. The source
+must already be imported with the same name, version and options, and every file
+must be complete and unchanged; `--allow-mtime-change` accepts a copied file with
+the same size and, where one was recorded, checksum. Repeating the command is safe.
+When buildings change, the source revision advances, so model readers see a pending
+publication until `link` and `publish` have finished: run it in a quiet window.
+
 ## Workflow
 
 Install the checkout with `python -m pip install -e .`. Create an empty database

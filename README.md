@@ -11,7 +11,7 @@ Explore Swedish building evidence, trace it to its sources and pass selected rec
 [Explore the EPSM platform](https://github.com/SB-Chalmers/epsm/blob/main/docs/platform.md)
 <!-- /EPSM introduction -->
 
-Version **0.6.0** provides the stock Python workflow over a PostgreSQL/PostGIS lake for linked property,
+Version **0.6.1** provides the stock Python workflow over a PostgreSQL/PostGIS lake for linked property,
 building, component, address, EPC and height evidence, with versioned boundaries,
 SCB statistics and NVDB road data.
 

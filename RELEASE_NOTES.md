@@ -1,3 +1,16 @@
+# Release 0.6.1 — community-function purposes (22 November 2026)
+
+The register parser reads the community-function purpose element in the spelling the
+Lantmäteriet XML uses (`Samhallsfunktion`) as well as `Samhällsfunktion`, and stores it
+as `Samhällsfunktion`. Before this, those purposes were left out of `purposes`, while
+the raw values were kept. The lake's building purposes must be re-read for
+`gis.model_facts` to see them.
+
+An existing snapshot does not need a rebuild for this: `epsm-db reparse-purposes`
+reads the same building register files again and rewrites only the parsed purposes
+of buildings whose stored record is otherwise unchanged. Run `epsm-db link` and
+`epsm-db publish` afterwards. See `docs/gis_first_lake.md`.
+
 # Release 0.6.0 — observed EPC systems (21 November 2026)
 
 `epsm_db.epc_systems` reads what an EPC reports about a building's systems:
