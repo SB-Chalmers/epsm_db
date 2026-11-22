@@ -2,7 +2,7 @@
 
 Importing this package opens no connection and loads no modelling catalogue.
 """
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 __all__ = ["Lake", "Database", "Stock", "StockCell", "BuildingRecord", "Receipt", "BuildingType",
            "PublicationPendingError", "RecordNotFoundError", "BoundaryUnavailableError"]
 
