@@ -228,7 +228,7 @@ def normalize(kind, row, geometry, entry, source_record):
                     height_status=text(field('height_status')) or 'not_determined',
                     representative_height_m=number(field('representative_height_m')),
                     eave_height_m=number(field('eave_height_m')), ridge_height_m=number(field('ridge_height_m')),
-                    roof_form=text(field('roof_form')), measured_at=text(field('measured_at')),
+                    roof_form=text(field('roof_form')), measured_at=text(field('measured_at', 'source_date_max')),
                     evidence_path=text(field('evidence_path', 'evidence_record_path')))
     elif kind == 'epc':
         regime = entry.get('regime') or text(field('regime')) or 'source'
