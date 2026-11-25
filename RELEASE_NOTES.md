@@ -1,3 +1,25 @@
+# Unreleased — small-house height plausibility (24 November 2026)
+
+Records of small houses (single-family type, or a register purpose starting with
+`Småhus`) now carry a `height_plausibility` receipt field and `receipt.quality`
+findings from `epsm_db.height_checks`:
+
+- `small_house_height_implausible`: a component body height of 7.5 m or more
+  (three or more storeys at 3 m).
+- `small_house_height_exceeds_living_area`: the register living area
+  (`totalBoarea`) is below 0.6 of footprint x height-implied storeys.
+- `height_survey_before_construction`: the height was measured before the
+  construction year. The height reader now fills `measured_at` from the
+  extractor's `source_date_max` (LiDAR collection date) when it is present. The
+  2026-10-13 national height baseline has no collection dates, so this finding
+  stays silent there until the heights are re-extracted with strip metadata.
+
+The cause is tree canopy: unclassified LiDAR points include vegetation, so a house
+built on a wooded plot after the scan gets the canopy height. In the 2026-10-13
+snapshot, 23–35 % of småhus built 2022–2026 have a body height of 7.5 m or more,
+against about 1.5 % of older houses. In the SF SE.07 cohort sample, 434 of 909 kept
+houses are flagged. Findings only report; no evidence is changed or dropped.
+
 # Release 0.6.1 — community-function purposes (22 November 2026)
 
 The register parser reads the community-function purpose element in the spelling the

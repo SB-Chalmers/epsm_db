@@ -373,6 +373,60 @@ maximum component heights rather than inventing one building height. Certificate
 Atemp values remain certificate totals, repeated on links for inspection; summing
 those values over linked buildings can double-count a shared certificate.
 
+### Known issue: heights of houses built after the LiDAR scan
+
+Heights come from the national LiDAR. The extractor treats unclassified points inside
+a footprint as roof points, and unclassified points include vegetation. When a building
+is newer than the scan of its area, the footprint covered whatever stood there at scan
+time:
+
+- **A bare plot** has too few roof points or too low a height. The height stays NULL
+  with `insufficient_roof_points` or `implausibly_low_height`, so this case is caught.
+- **A wooded plot** returns the tree canopy, typically 7.5–24 m. That passes every
+  extractor check and is stored as a `determined` height.
+
+For small houses (småhus) in the 2026-10-13 snapshot (revision 13345), the share with a
+body height of 7.5 m or more is:
+
+| Built | Share | Houses |
+|---|---|---|
+| before 2018 | 1.5–2 % | about 36,000 |
+| 2020 | 7 % | 452 |
+| 2021 | 12 % | 831 |
+| 2022–2026 | 23–35 % | about 4,900 |
+| unknown year | 3 % | about 13,700 |
+
+The older background will mix real tall houses and trees over roofs; it has not been
+checked house by house.
+
+A consumer that turns height into storeys gets a bungalow modelled as a 3–8 storey
+tower. In the single-family SE.07 validation cohort, 301 of 897 houses had this, and
+the median EPC Atemp ÷ modelled floor area was 0.69. Satellite images of sampled houses
+showed low houses on plots cleared from forest.
+
+**No time-mismatch flag is available yet.** `gis.height_evidence.measured_at` exists,
+but the national height baseline was extracted without LiDAR strip metadata, so
+`source_date_min` and `source_date_max` are empty for every building and `measured_at`
+is NULL. The height reader now fills `measured_at` from `source_date_max` when it is
+present. Re-extracting the heights with strip dates would make the time-mismatch check
+below work.
+
+**Record findings (`epsm_db.height_checks`).** Every small-house record (single-family
+type, or a register purpose starting with `Småhus`) gets a `height_plausibility` receipt
+field and these `receipt.quality` findings. They only report; no height is changed or
+dropped.
+
+| Finding | Rule |
+|---|---|
+| `small_house_height_implausible` | A component's body height is 7.5 m or more. Body height is the eave for a supported pitched roof, otherwise the representative height. |
+| `small_house_height_exceeds_living_area` | With 2 or more height-implied storeys, the register living area (`totalBoarea`) is below 0.6 × footprint × storeys. |
+| `height_survey_before_construction` | The height was measured before the construction year. This needs `measured_at`. |
+
+EPSM (policy version 8 onwards) applies its own fallback for single-family houses. When
+the storey count comes from height, it is checked against the EPC Atemp, or the register
+living area when there is no EPC. An implausible count is replaced by the area-implied
+one, at most 3 storeys, at 3 m per storey with a compact roof, and the receipt says so.
+
 Grant an existing participant/group access:
 
 ```bash

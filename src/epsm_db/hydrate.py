@@ -7,6 +7,7 @@ from shapely import from_wkb
 
 from .enums import BuildingType
 from .epc import observations
+from .height_checks import height_findings, height_plausibility_field
 from .records import BuildingRecord, Receipt
 
 
@@ -265,5 +266,8 @@ def hydrate(connection, facts, publication, request, database_url):
                 "No unique latest single-building EPC; certificate quantities are not allocated."
             )
         receipt.quality.extend(record.temporal_warnings)
+        findings = height_findings(record)
+        receipt.fields["height_plausibility"] = height_plausibility_field(record, findings)
+        receipt.quality.extend(f"{f['code']}: {f['detail']}" for f in findings)
         records.append(record)
     return records
